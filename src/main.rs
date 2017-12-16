@@ -164,18 +164,22 @@ fn main() {
                 if game_state.screen_in_progress() || ! game_state.playing() {
                     base_bricks.update();
                     mother.update();
-                    spiders.update(&mother, &mut base_bricks, &mut letter_bricks, frame_count);
+                    bombs.update();
+                    spiders.update(&mother, &mut base_bricks, &mut letter_bricks,
+                        &mut bombs, frame_count);
                 }
                 collision::missile_collision(&mut missile, &mut spiders,
                     &mut base_bricks, &mut letter_bricks, &mut score);
                 if game_state.playing() && letter_bricks.complete() {
                     game_state = GameState::GameOver;
+                    common::sound_off();
                 }
                 if game_state.screen_in_progress() && ! spiders.spiders_remain() {
                     screen += 1;
                     game_state = GameState::ScreenStart(1.0);
                     mother.reset();
                     spiders.reset();
+                    bombs.reset();
                     frame_count = 0;
                 }
                 if (! game_state.playing()) && start_pressed {
@@ -191,6 +195,8 @@ fn main() {
                     score = 0;
                     frame_count = 0;
                     screen = 1;
+                    fire_pressed = false;
+                    common::sound_on();
                 }
             }
         }

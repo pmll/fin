@@ -4,7 +4,7 @@ use music;
 
 const MISSILE_WIDTH: f64 = 3.0;
 const MISSILE_HEIGHT: f64 = 15.0;
-const MISSILE_SPEED: f64 = 10.0;
+const MISSILE_SPEED: f64 = 12.0;
 
 pub struct Missile {
     x: f64,
@@ -28,7 +28,7 @@ impl Missile {
             self.x = from_x - (MISSILE_WIDTH / 2.0).floor();
             self.y = from_y - MISSILE_HEIGHT;
             self.in_flight = true;
-            music::play_sound(&common::Sound::Fire, music::Repeat::Times(0), music::MAX_VOLUME);
+            common::play_sound(&common::Sound::Fire);
         }
     }
 

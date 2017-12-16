@@ -6,6 +6,7 @@ use common::win_image;
 use mother::Mother;
 use base_bricks::BaseBricks;
 use letter_bricks::LetterBricks;
+use bombs::Bombs;
 use rand;
 use rand::Rng;
 use std::f64::consts::PI;
@@ -59,11 +60,14 @@ struct Spider {
     state: State,
     x: f64,
     y: f64,
+    next_dir_change: u32,
+    next_bomb_release: u32,
 }
 
 impl Spider {
     fn new() -> Spider {
-        Spider {spider_type: Type::Medium, state: State::Nestle, x: 0.0, y: 0.0}
+        Spider {spider_type: Type::Medium, state: State::Nestle, x: 0.0, y: 0.0,
+            next_dir_change: 0, next_bomb_release: 0}
     }
 
     fn launch(&mut self, mother: &Mother) -> bool {
@@ -127,22 +131,37 @@ impl Spider {
         }
     }
 
-    fn aimless_wandering(&self, x_vel: f64, y_vel: f64) -> (f64, f64) {
-        /*
-        let (x_vel, y_vel) = if rand::thread_rng().gen_range(0, 90) == 0
-            {self.random_vel(DirRequired::Any)} else {(x_vel, y_vel)};
-            */
+    fn aimless_wandering(&mut self, x_vel: f64, y_vel: f64) -> (f64, f64) {
+        if self.next_dir_change == 0 {
+            self.next_dir_change = rand::thread_rng().gen_range(100, 200);
+        }
 
-        let new_x_vel = if self.x + x_vel > common::SCREEN_WIDTH - SPIDER_WIDTH ||
+        self.next_dir_change -= 1;
+
+        let (x_vel, y_vel) = if self.next_dir_change == 0
+            {self.random_vel(DirRequired::Any)} else {(x_vel, y_vel)};
+
+        let x_vel = if self.x + x_vel > common::SCREEN_WIDTH - SPIDER_WIDTH ||
             self.x + x_vel < 0.0 {- x_vel} else {x_vel};
 
-        let new_y_vel = if (self.y + y_vel > FLIGHT_SPIDER_Y_MAX - SPIDER_HEIGHT && y_vel > 0.0) ||
+        let y_vel = if (self.y + y_vel > FLIGHT_SPIDER_Y_MAX - SPIDER_HEIGHT && y_vel > 0.0) ||
             (self.y + y_vel < FLIGHT_SPIDER_Y_MIN && y_vel < 0.0)
             {- y_vel} else {y_vel};
-        (new_x_vel, new_y_vel)
+        (x_vel, y_vel)
     }
 
-    fn update(&mut self, base_bricks: &mut BaseBricks, letter_bricks: &mut LetterBricks) {
+    fn drop_bomb(&mut self, bombs: &mut Bombs) {
+        if self.next_bomb_release == 0 {
+            self.next_bomb_release = rand::thread_rng().gen_range(50, 200);
+        }
+        self.next_bomb_release -= 1;
+        if self.next_bomb_release == 0 {
+            bombs.release(self.x + SPIDER_WIDTH / 2.0, self.y + SPIDER_HEIGHT);
+        }
+    }
+
+    fn update(&mut self, base_bricks: &mut BaseBricks, letter_bricks: &mut LetterBricks,
+        bombs: &mut Bombs) {
         match self.state {
             State::Swoop(n, r) => {
                 if n < 1.0 {
@@ -201,6 +220,7 @@ impl Spider {
                         self.y += new_y_vel;
                     },
                 }
+                self.drop_bomb(bombs);
             },
             State::Descend(target) => {
                 self.y += 1.0;
@@ -210,7 +230,7 @@ impl Spider {
                     // transform coords to centre of spider
                     self.x += SPIDER_WIDTH * 0.5;
                     self.y += SPIDER_HEIGHT * 0.5;
-                    music::play_sound(&common::Sound::TakeBrick, music::Repeat::Times(0), music::MAX_VOLUME);
+                    common::play_sound(&common::Sound::TakeBrick);
                 }
             },
             State::Grab(n, r) => {
@@ -239,7 +259,7 @@ impl Spider {
                             self.state = State::Release(0.0, if rand::thread_rng().gen() {-1.0} else {1.0});
                             self.x = adj_x + SPIDER_WIDTH * 0.5;
                             self.y = adj_y + SPIDER_HEIGHT * 0.5;
-                            music::play_sound(&common::Sound::DepositBrick, music::Repeat::Times(0), music::MAX_VOLUME);
+                            common::play_sound(&common::Sound::DepositBrick);
                         }
                         // Are we already on a trajectory to reach the target?
                         else if self.trajectory_reaches_target(adj_x, adj_y, x_vel, y_vel) {
@@ -269,6 +289,7 @@ impl Spider {
                         self.y += new_y_vel;
                     },
                 }
+                self.drop_bomb(bombs);
             },
             State::Release(n, r) => {
                 if n < 1.0 {
@@ -363,7 +384,7 @@ impl Spiders {
             // nestle spiders are 6 by 8
             // for nestle spiders, x and y are relative to mother
             new_spiders.spider[i].y = ((i / 15) * 8) as f64 - 16.0;
-            new_spiders.spider[i].x = ((i % 15) * 6 + 5) as f64
+            new_spiders.spider[i].x = ((i % 15) * 6 + 5) as f64;
         }
         new_spiders
     }
@@ -373,6 +394,8 @@ impl Spiders {
             self.spider[i].y = ((i / 15) * 8) as f64 - 16.0;
             self.spider[i].x = ((i % 15) * 6 + 5) as f64;
             self.spider[i].state = State::Nestle;
+            self.spider[i].next_dir_change = 0;
+            self.spider[i].next_bomb_release = 0;
             self.spiders_left = NUMBER_OF_SPIDERS as u32;
             self.spiders_in_flight = 0;
             self.next_spider_launch = 0;
@@ -381,7 +404,7 @@ impl Spiders {
     }
 
     pub fn update(&mut self, mother: &Mother, base_bricks: &mut BaseBricks,
-                  letter_bricks: &mut LetterBricks, frame_count: i32) {
+                  letter_bricks: &mut LetterBricks, bombs: &mut Bombs, frame_count: i32) {
         if self.spiders_in_flight < MAX_SPIDERS_IN_FLIGHT &&
            self.next_spider_launch < NUMBER_OF_SPIDERS &&
            frame_count - self.last_launch_frame >= FRAMES_BETWEEN_LAUNCHES &&
@@ -391,7 +414,7 @@ impl Spiders {
             self.last_launch_frame = frame_count;
         }
         for i in 0..NUMBER_OF_SPIDERS {
-            self.spider[i].update(base_bricks, letter_bricks)
+            self.spider[i].update(base_bricks, letter_bricks, bombs)
         }
     }
 
@@ -437,7 +460,7 @@ impl Spiders {
         self.spider[spider_id].state = State::Dead(0);
         self.spiders_in_flight -= 1;
         self.spiders_left -= 1;
-        music::play_sound(&common::Sound::SpiderExplode, music::Repeat::Times(0), music::MAX_VOLUME);
+        common::play_sound(&common::Sound::SpiderExplode);
     }
 
     pub fn spiders_remain(&self) -> bool {

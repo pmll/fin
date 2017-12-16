@@ -2,6 +2,10 @@
 use piston_window::*;
 use std::path::PathBuf;
 use find_folder;
+use music;
+
+// shock/horror
+static mut sound_is_on: bool = false;
 
 #[derive(Copy, Clone)]
 pub struct TargetBrick {
@@ -49,8 +53,6 @@ pub fn find_asset(file_name: &str) -> PathBuf {
 }
 
 pub fn win_image(window: &mut PistonWindow, file_name: &str) -> G2dTexture {
-    //let assets = find_folder::Search::ParentsThenKids(3, 3).for_folder("assets").unwrap();
-    //let image_path = assets.join(file_name);
     let image_path = find_asset(file_name);
     Texture::from_path(
         &mut window.factory,
@@ -59,3 +61,24 @@ pub fn win_image(window: &mut PistonWindow, file_name: &str) -> G2dTexture {
         &TextureSettings::new()
     ).unwrap()
 }
+
+pub fn play_sound(sound: &Sound) {
+    unsafe {
+        if sound_is_on {
+            music::play_sound(sound, music::Repeat::Times(0), music::MAX_VOLUME);
+        }
+    }
+}
+
+pub fn sound_on() {
+    unsafe {
+        sound_is_on = true;
+    }
+}
+
+pub fn sound_off() {
+    unsafe {
+        sound_is_on = false;
+    }
+}
+
