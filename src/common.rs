@@ -5,7 +5,7 @@ use find_folder;
 use music;
 
 // shock/horror
-static mut sound_is_on: bool = false;
+static mut SOUND_IS_ON: bool = false;
 
 #[derive(Copy, Clone)]
 pub struct TargetBrick {
@@ -64,7 +64,7 @@ pub fn win_image(window: &mut PistonWindow, file_name: &str) -> G2dTexture {
 
 pub fn play_sound(sound: &Sound) {
     unsafe {
-        if sound_is_on {
+        if SOUND_IS_ON {
             music::play_sound(sound, music::Repeat::Times(0), music::MAX_VOLUME);
         }
     }
@@ -72,13 +72,13 @@ pub fn play_sound(sound: &Sound) {
 
 pub fn sound_on() {
     unsafe {
-        sound_is_on = true;
+        SOUND_IS_ON = true;
     }
 }
 
 pub fn sound_off() {
     unsafe {
-        sound_is_on = false;
+        SOUND_IS_ON = false;
     }
 }
 

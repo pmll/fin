@@ -1,6 +1,5 @@
 use piston_window::*;
 use common;
-use music;
 
 const MISSILE_WIDTH: f64 = 3.0;
 const MISSILE_HEIGHT: f64 = 15.0;

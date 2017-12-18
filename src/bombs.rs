@@ -15,6 +15,10 @@ struct Bomb {
 }
 
 impl Bomb {
+    fn area(&self) -> common::ScreenObjectArea {
+        common::ScreenObjectArea::new(self.x, self.y, BOMB_WIDTH, BOMB_HEIGHT)
+    }
+
     fn update(&mut self) {
         if self.in_flight {
             self.y += BOMB_SPEED;
@@ -48,6 +52,17 @@ impl Bombs {
                 self.bomb[i].x = x - BOMB_WIDTH / 2.0;
                 self.bomb[i].y = y;
                 self.bomb[i].in_flight = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    pub fn collision(&mut self, col_area: common::ScreenObjectArea) -> bool {
+        for i in 0..MAX_BOMBS {
+            if self.bomb[i].in_flight && col_area.collides(self.bomb[i].area()) {
+                // once bomb has collided, it is no more, take care of it here
+                self.bomb[i].in_flight = false;
                 return true;
             }
         }

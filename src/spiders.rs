@@ -1,6 +1,5 @@
 
 use piston_window::*;
-use music;
 use common;
 use common::win_image;
 use mother::Mother;
@@ -524,7 +523,6 @@ impl Spiders {
                               c.transform.trans(spider.x, spider.y), g);
                     }
                 },
-                _ => {}
             };
         }
     }

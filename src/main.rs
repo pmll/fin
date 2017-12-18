@@ -87,6 +87,7 @@ fn main() {
         music::bind_sound_file(common::Sound::TakeBrick, common::find_asset("grab.wav"));
         music::bind_sound_file(common::Sound::DepositBrick, common::find_asset("drop.wav"));
         music::bind_sound_file(common::Sound::SpiderExplode, common::find_asset("spider_explosion.wav"));
+        music::bind_sound_file(common::Sound::ShipExplode, common::find_asset("ship_explosion.wav"));
 
         while let Some(e) = window.next() {
             if let Some(_) = e.render_args() {
@@ -160,6 +161,7 @@ fn main() {
                         fire_pressed = false;
                     }
                     missile.update();
+                    ship.update();
                 }
                 if game_state.screen_in_progress() || ! game_state.playing() {
                     base_bricks.update();
@@ -170,7 +172,10 @@ fn main() {
                 }
                 collision::missile_collision(&mut missile, &mut spiders,
                     &mut base_bricks, &mut letter_bricks, &mut score);
-                if game_state.playing() && letter_bricks.complete() {
+                collision::bomb_collision(&mut bombs, &mut ship);
+                collision::spider_collision(&mut spiders, &mut ship,
+                    &mut base_bricks, &mut letter_bricks);
+                if game_state.playing() && (letter_bricks.complete() || ! ship.life_left()) {
                     game_state = GameState::GameOver;
                     common::sound_off();
                 }
