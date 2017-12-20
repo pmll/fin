@@ -4,8 +4,8 @@ use common;
 
 const BOMB_WIDTH: f64 = 3.0;
 const BOMB_HEIGHT: f64 = 15.0;
-const BOMB_SPEED: f64 = 5.0;
-const MAX_BOMBS: usize = 6;
+const BOMB_SPEED: f64 = 4.0;
+const MAX_BOMBS: usize = 4;
 
 #[derive(Copy, Clone)]
 struct Bomb {
@@ -76,7 +76,7 @@ impl Bombs {
     }
 
     pub fn render(&self, c: Context, g: &mut G2d) {
-        for i in 0..6 {
+        for i in 0..MAX_BOMBS {
             if self.bomb[i].in_flight {
                 image(&self.bomb_image, c.transform.trans(self.bomb[i].x, self.bomb[i].y), g);
             }

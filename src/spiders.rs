@@ -11,14 +11,14 @@ use rand::Rng;
 use std::f64::consts::PI;
 
 const NUMBER_OF_SPIDERS: usize = 45;
-const MAX_SPIDERS_IN_FLIGHT: u32 = 8;
+const MAX_SPIDERS_IN_FLIGHT: u32 = 6;
 const SPIDER_WIDTH: f64 = 30.0;
 const SPIDER_HEIGHT: f64 = 40.0;
 const SPIDER_PERIOD: i32 = 20;
 const SPIDER_ROTATE_SPEED: f64 = 0.05;
 const SWOOP_SPEED: f64 = 5.0;
 const FRAMES_BETWEEN_LAUNCHES: i32 = 30;
-const FLIGHT_SPIDER_Y_MAX: f64 = 610.0;
+const FLIGHT_SPIDER_Y_MAX: f64 = 500.0;
 const FLIGHT_SPIDER_Y_MIN: f64 = 200.0;
 const SPEED_SLOW: f64 = 2.0;
 const SPEED_MEDIUM: f64 = 3.0;
@@ -27,6 +27,8 @@ const SPEED: [[(f64, f64); 3]; 3] =
     [[(SPEED_SLOW, SPEED_SLOW), (SPEED_SLOW / 2.0, SPEED_SLOW), (0.0, SPEED_SLOW)],
      [(SPEED_MEDIUM * 2.0, SPEED_MEDIUM), (SPEED_MEDIUM, SPEED_MEDIUM), (SPEED_MEDIUM / 2.0, SPEED_MEDIUM)],
      [(SPEED_FAST, 0.0), (SPEED_FAST * 2.0, SPEED_FAST), (SPEED_FAST, SPEED_FAST)]];
+const SPIDER_ASCEND_Y: f64 = 510.0;
+const BOMB_RELEASE_MAX_Y: f64 = 410.0;
 
 #[derive(Copy, Clone)]
 enum State {
@@ -35,6 +37,7 @@ enum State {
     Seek(f64, f64, Option<common::TargetBrick>),
     Descend(common::TargetBrick),
     Grab(f64, f64),
+    Ascend,
     Carry(f64, f64, Option<common::TargetBrick>),
     Release(f64, f64),
     Dead(usize),
@@ -86,6 +89,7 @@ impl Spider {
 
     fn trajectory_reaches_target(&self, x_target: f64, y_target: f64, x_vel: f64, y_vel: f64) -> bool {
         (y_target - self.y).signum() == y_vel.signum() &&
+        (y_vel < 0.0 || x_vel.abs() <= y_vel.abs()) &&    // not too shallow on downward approach
         (((x_target - self.x) / x_vel) * y_vel + self.y - y_target).abs() < y_vel.abs()
     }
 
@@ -150,12 +154,14 @@ impl Spider {
     }
 
     fn drop_bomb(&mut self, bombs: &mut Bombs) {
-        if self.next_bomb_release == 0 {
-            self.next_bomb_release = rand::thread_rng().gen_range(50, 200);
-        }
-        self.next_bomb_release -= 1;
-        if self.next_bomb_release == 0 {
-            bombs.release(self.x + SPIDER_WIDTH / 2.0, self.y + SPIDER_HEIGHT);
+        if self.y < BOMB_RELEASE_MAX_Y {
+            if self.next_bomb_release == 0 {
+                self.next_bomb_release = rand::thread_rng().gen_range(50, 200);
+            }
+            self.next_bomb_release -= 1;
+            if self.next_bomb_release == 0 {
+                bombs.release(self.x + SPIDER_WIDTH / 2.0, self.y + SPIDER_HEIGHT);
+            }
         }
     }
 
@@ -240,6 +246,15 @@ impl Spider {
                     // transform from centre coords to top left coords
                     self.x -= SPIDER_WIDTH * 0.5;
                     self.y -= SPIDER_HEIGHT * 0.5;
+                    self.state = State::Ascend;
+                }
+            },
+            State::Ascend => {
+                self.y -= match self.spider_type {
+                    Type::Slow => {SPEED_SLOW},
+                    Type::Medium => {SPEED_MEDIUM},
+                    Type::Fast => {SPEED_FAST}};
+                if self.y <= SPIDER_ASCEND_Y {
                     let (x_vel, y_vel) = self.random_vel(DirRequired::Up);
                     self.state = State::Carry(x_vel, y_vel, None);
                 }
@@ -316,6 +331,7 @@ impl Spider {
 
         match self.state {
             State::Seek(_, _, _) => {collides},
+            State::Ascend => {collides},
             State::Carry(_, _, _) => {collides},
             State::Release(_, _) => {collides},
             _ => {false}
@@ -505,6 +521,10 @@ impl Spiders {
                           .rot_rad(PI + PI * n * r)
                           .trans(- SPIDER_WIDTH * 0.5, - SPIDER_HEIGHT * 0.5),
                           g);
+                },
+                State::Ascend => {
+                    image(&self.spider_image_laden[type_i][anim_frame],
+                          c.transform.trans(spider.x, spider.y), g);
                 },
                 State::Carry(_, _, _) => {
                     image(&self.spider_image_laden[type_i][anim_frame],
