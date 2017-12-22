@@ -168,13 +168,16 @@ fn main() {
                     mother.update();
                     bombs.update();
                     spiders.update(&mother, &mut base_bricks, &mut letter_bricks,
-                        &mut bombs, frame_count);
+                        &mut bombs, ship.in_changeover() && game_state.playing(), frame_count);
                 }
                 collision::missile_collision(&mut missile, &mut spiders,
                     &mut base_bricks, &mut letter_bricks, &mut score);
                 collision::bomb_collision(&mut bombs, &mut ship);
                 collision::spider_collision(&mut spiders, &mut ship,
                     &mut base_bricks, &mut letter_bricks);
+                if ship.waiting_for_changeover() && spiders.clear() && ! bombs.in_flight() {
+                    ship.proceed_with_changeover();
+                }
                 if game_state.playing() && (letter_bricks.complete() || ! ship.life_left()) {
                     game_state = GameState::GameOver;
                     common::sound_off();
@@ -202,6 +205,7 @@ fn main() {
                     screen = 1;
                     fire_pressed = false;
                     common::sound_on();
+                    ship.proceed_with_changeover();
                 }
             }
         }

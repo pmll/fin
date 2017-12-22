@@ -72,6 +72,11 @@ impl Spider {
             next_dir_change: 0, next_bomb_release: 0}
     }
 
+    fn alive(&self) -> bool {
+        if let State::Dead(_) = self.state {false} else {true}
+
+    }
+
     fn launch(&mut self, mother: &Mother) -> bool {
         if let Some(d) = mother.launch_dir() {
             // transform coords from relative to mother to centre of spider
@@ -144,8 +149,9 @@ impl Spider {
         let (x_vel, y_vel) = if self.next_dir_change == 0
             {self.random_vel(DirRequired::Any)} else {(x_vel, y_vel)};
 
-        let x_vel = if self.x + x_vel > common::SCREEN_WIDTH - SPIDER_WIDTH ||
-            self.x + x_vel < 0.0 {- x_vel} else {x_vel};
+        let x_vel = if (self.x + x_vel > common::SCREEN_WIDTH - SPIDER_WIDTH && x_vel > 0.0) ||
+            (self.x + x_vel < 0.0 && x_vel < 0.0)
+            {- x_vel} else {x_vel};
 
         let y_vel = if (self.y + y_vel > FLIGHT_SPIDER_Y_MAX - SPIDER_HEIGHT && y_vel > 0.0) ||
             (self.y + y_vel < FLIGHT_SPIDER_Y_MIN && y_vel < 0.0)
@@ -166,7 +172,7 @@ impl Spider {
     }
 
     fn update(&mut self, base_bricks: &mut BaseBricks, letter_bricks: &mut LetterBricks,
-        bombs: &mut Bombs) {
+        bombs: &mut Bombs, restrict: bool) {
         match self.state {
             State::Swoop(n, r) => {
                 if n < 1.0 {
@@ -190,8 +196,15 @@ impl Spider {
                         let adj_x = target_brick.x - 9.0;
                         let adj_y = target_brick.y - 40.0;
 
+                        // restricted mode?
+                        if restrict {
+                            let (new_x_vel, new_y_vel) = self.aimless_wandering(x_vel, y_vel);
+                            self.state = State::Seek(new_x_vel, new_y_vel, target);
+                            self.x += new_x_vel;
+                            self.y += new_y_vel;
+                        }
                         // have we reached the target (or close enough)?
-                        if (self.x - adj_x).abs() < x_vel.abs() &&
+                        else if (self.x - adj_x).abs() < x_vel.abs() &&
                            (self.y - adj_y).abs() < y_vel.abs() {
                             self.x = adj_x;
                             self.y = adj_y;
@@ -225,7 +238,9 @@ impl Spider {
                         self.y += new_y_vel;
                     },
                 }
-                self.drop_bomb(bombs);
+                if ! restrict {
+                    self.drop_bomb(bombs);
+                }
             },
             State::Descend(target) => {
                 self.y += 1.0;
@@ -266,8 +281,15 @@ impl Spider {
                         let adj_x = target_brick.x - 9.0;
                         let adj_y = target_brick.y;
 
+                        // restricted mode?
+                        if restrict {
+                            let (new_x_vel, new_y_vel) = self.aimless_wandering(x_vel, y_vel);
+                            self.state = State::Carry(new_x_vel, new_y_vel, target);
+                            self.x += new_x_vel;
+                            self.y += new_y_vel;
+                        }
                         // have we reached the target (or close enough)?
-                        if (self.x - adj_x).abs() < x_vel.abs() &&
+                        else if (self.x - adj_x).abs() < x_vel.abs() &&
                            (self.y - adj_y).abs() < y_vel.abs() {
                             letter_bricks.fill_target(target_brick.brick_id);
                             self.state = State::Release(0.0, if rand::thread_rng().gen() {-1.0} else {1.0});
@@ -303,7 +325,9 @@ impl Spider {
                         self.y += new_y_vel;
                     },
                 }
-                self.drop_bomb(bombs);
+                if ! restrict {
+                    self.drop_bomb(bombs);
+                }
             },
             State::Release(n, r) => {
                 if n < 1.0 {
@@ -419,17 +443,19 @@ impl Spiders {
     }
 
     pub fn update(&mut self, mother: &Mother, base_bricks: &mut BaseBricks,
-                  letter_bricks: &mut LetterBricks, bombs: &mut Bombs, frame_count: i32) {
+                  letter_bricks: &mut LetterBricks, bombs: &mut Bombs, 
+                  restrict: bool, frame_count: i32) {
         if self.spiders_in_flight < MAX_SPIDERS_IN_FLIGHT &&
            self.next_spider_launch < NUMBER_OF_SPIDERS &&
            frame_count - self.last_launch_frame >= FRAMES_BETWEEN_LAUNCHES &&
+           ! restrict &&
            self.spider[self.next_spider_launch].launch(mother) {
             self.next_spider_launch += 1;
             self.spiders_in_flight += 1;
             self.last_launch_frame = frame_count;
         }
         for i in 0..NUMBER_OF_SPIDERS {
-            self.spider[i].update(base_bricks, letter_bricks, bombs)
+            self.spider[i].update(base_bricks, letter_bricks, bombs, restrict)
         }
     }
 
@@ -480,6 +506,10 @@ impl Spiders {
 
     pub fn spiders_remain(&self) -> bool {
         self.spiders_left > 0
+    }
+
+    pub fn clear(&self) -> bool {
+        ! self.spider.iter().any(|&s| s.alive() && s.y > FLIGHT_SPIDER_Y_MAX)
     }
 
     pub fn render(&self, mother: &Mother, c: Context, g: &mut G2d, frame_count: i32) {

@@ -69,6 +69,10 @@ impl Bombs {
         return false;
     }
 
+    pub fn in_flight(&self) -> bool {
+        self.bomb.iter().any(|&b| b.in_flight)
+    }
+
     pub fn update(&mut self) {
         for i in 0..MAX_BOMBS {
             self.bomb[i].update();

@@ -6,14 +6,15 @@ const SHIP_WIDTH: f64 = 30.0;
 const SHIP_HEIGHT: f64 = 45.0;
 const SHIP_Y: f64 = 560.0;
 const SHIP_SPEED: f64 = 5.0;
-const LIVES: u32 = 3;
+const LIVES: u32 = 4;
 const LIVES_Y: f64 = common::SCREEN_HEIGHT - 2.0 - SHIP_HEIGHT / 2.0;
 const LIVES_X: f64 = common::SCREEN_WIDTH - 2.0 - SHIP_WIDTH / 2.0;
 
 enum ShipState {
     Alive,
     Dead(usize),
-    ChangeOver(u32),
+    WaitForChangeOver,
+    ChangeOver(f64),
 }
 
 pub struct Ship {
@@ -26,7 +27,7 @@ pub struct Ship {
 
 impl Ship {
     pub fn new (window: &mut PistonWindow) -> Ship {
-        Ship{x: ((common::SCREEN_WIDTH - SHIP_WIDTH) / 2.0).floor(),
+        Ship{x: Ship::home_x(),
              state: ShipState::Alive,
              lives: LIVES,
              ship_image: [common::win_image(window, "ship1.png"),
@@ -38,8 +39,12 @@ impl Ship {
                                common::win_image(window, "spider_explosion4.png")]}
     }
 
+    fn home_x() -> f64 {
+        ((common::SCREEN_WIDTH - SHIP_WIDTH) / 2.0).floor()
+    }
+
     pub fn reset(&mut self) {
-        self.x = ((common::SCREEN_WIDTH - SHIP_WIDTH) / 2.0).floor();
+        self.x = Ship::home_x();
         self.state = ShipState::Alive;
         self.lives = LIVES;
     }
@@ -73,7 +78,7 @@ impl Ship {
 
     pub fn life_left(&self) -> bool {
         if self.lives == 0 {
-            if let ShipState::ChangeOver(n) = self.state {
+            if let ShipState::WaitForChangeOver = self.state {
                 return false;
             }
         }
@@ -91,13 +96,15 @@ impl Ship {
                     self.state = ShipState::Dead(n + 1);
                 }
                 else {
-                    self.state = ShipState::ChangeOver(0);
+                    self.state = ShipState::WaitForChangeOver;
+                    self.x = Ship::home_x();
                 }
             },
             ShipState::ChangeOver(n) => {
-                // will do something more elaborate with the changeover, eventually...
-                if self.lives > 0 {
-                    self.lives -= 1;
+                if n < 1.0 {
+                    self.state = ShipState::ChangeOver(n + 0.05);
+                }
+                else {
                     self.state = ShipState::Alive;
                 }
             },
@@ -109,6 +116,32 @@ impl Ship {
         if let ShipState::Alive = self.state {
             missile.launch(self.x + (SHIP_WIDTH / 2.0).floor(), SHIP_Y);
         }
+    }
+
+    pub fn waiting_for_changeover(&self) -> bool {
+        match self.state {
+            ShipState::WaitForChangeOver => {true},
+            _ => {false},
+        }
+    }
+
+    pub fn in_changeover(&self) -> bool {
+        match self.state {
+            ShipState::WaitForChangeOver => {true},
+            ShipState::ChangeOver(_) => {true},
+            _ => {false},
+        }
+    }
+
+    pub fn proceed_with_changeover(&mut self) {
+        if self.lives > 0 {
+            self.state = ShipState::ChangeOver(0.0);
+            self.lives -= 1;
+        }
+    }
+
+    fn life_x(life: u32) -> f64 {
+        LIVES_X - life as f64 * (SHIP_WIDTH / 2.0 + 10.0)
     }
 
     pub fn render(&self, c: Context, g: &mut G2d, frame_count: i32) {
@@ -124,11 +157,16 @@ impl Ship {
                         c.transform.trans(self.x, SHIP_Y), g);
                 }
             },
-            _ => {},        // possibly will have an animation during changeover
+            ShipState::ChangeOver(n) => {
+                image(&self.ship_image[0],
+                    c.transform.trans(self.x + (Ship::life_x(self.lives + 1) - self.x) * (1.0 - n),
+                        SHIP_Y + (LIVES_Y - SHIP_Y) * (1.0 - n)).zoom(0.5 + 0.5 * n), g);
+            },
+            _ => {},
         }
         for i in 0..self.lives {
             image(&self.ship_image[0],
-                c.transform.trans(LIVES_X - i as f64 * (SHIP_WIDTH / 2.0 + 10.0), LIVES_Y).zoom(0.5), g);
+                c.transform.trans(Ship::life_x(i), LIVES_Y).zoom(0.5), g);
         }
     }
 }
