@@ -454,8 +454,8 @@ impl Spiders {
             self.spiders_in_flight += 1;
             self.last_launch_frame = frame_count;
         }
-        for i in 0..NUMBER_OF_SPIDERS {
-            self.spider[i].update(base_bricks, letter_bricks, bombs, restrict)
+        for s in self.spider.iter_mut() {
+            s.update(base_bricks, letter_bricks, bombs, restrict)
         }
     }
 
@@ -514,8 +514,8 @@ impl Spiders {
 
     pub fn render(&self, mother: &Mother, c: Context, g: &mut G2d, frame_count: i32) {
         let anim_frame = ((frame_count % SPIDER_PERIOD) / (SPIDER_PERIOD / 4)) as usize;
-        for i in 0..NUMBER_OF_SPIDERS {
-            let spider = self.spider[i];
+        let (mother_x, mother_y) = mother.location();
+        for spider in self.spider.iter() {
             let type_i = match spider.spider_type {
                 Type::Slow => 0,
                 Type::Medium => 1,
@@ -523,7 +523,6 @@ impl Spiders {
             };
             match spider.state {
                 State::Nestle => {
-                    let (mother_x, mother_y) = mother.location();
                     let x = spider.x + mother_x;
                     let y = spider.y + mother_y;
                     image(&self.spider_image_empty[type_i][anim_frame],

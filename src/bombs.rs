@@ -39,32 +39,28 @@ impl Bombs {
     }
 
     pub fn reset(&mut self) {
-        for i in 0..MAX_BOMBS {
-            self.bomb[i].in_flight = false;
+        for b in &mut self.bomb {
+            b.in_flight = false;
         }
     }
 
     pub fn release(&mut self, x: f64, y: f64) -> bool {
-        // this type of thing is undoubtedly not very idiomatic rust,
-        // need to find a better way of doing this...
-        for i in 0..MAX_BOMBS {
-            if ! self.bomb[i].in_flight {
-                self.bomb[i].x = x - BOMB_WIDTH / 2.0;
-                self.bomb[i].y = y;
-                self.bomb[i].in_flight = true;
-                return true;
-            }
+        for b in self.bomb.iter_mut().filter(|b| ! b.in_flight).take(1) {
+            b.x = x - BOMB_WIDTH / 2.0;
+            b.y = y;
+            b.in_flight = true;
+            return true;
         }
         return false;
     }
 
     pub fn collision(&mut self, col_area: common::ScreenObjectArea) -> bool {
-        for i in 0..MAX_BOMBS {
-            if self.bomb[i].in_flight && col_area.collides(self.bomb[i].area()) {
-                // once bomb has collided, it is no more, take care of it here
-                self.bomb[i].in_flight = false;
-                return true;
-            }
+        for b in self.bomb.iter_mut()
+            .filter(|b| b.in_flight && col_area.collides(b.area()))
+            .take(1) {
+            // once bomb has collided, it is no more, take care of it here
+            b.in_flight = false;
+            return true;
         }
         return false;
     }
@@ -74,16 +70,14 @@ impl Bombs {
     }
 
     pub fn update(&mut self) {
-        for i in 0..MAX_BOMBS {
-            self.bomb[i].update();
+        for b in &mut self.bomb {
+            b.update();
         }
     }
 
     pub fn render(&self, c: Context, g: &mut G2d) {
-        for i in 0..MAX_BOMBS {
-            if self.bomb[i].in_flight {
-                image(&self.bomb_image, c.transform.trans(self.bomb[i].x, self.bomb[i].y), g);
-            }
+        for b in self.bomb.iter().filter(|&b| b.in_flight) {
+            image(&self.bomb_image, c.transform.trans(b.x, b.y), g);
         }
     }
 }

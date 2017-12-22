@@ -131,9 +131,9 @@ impl LetterBricks {
 
     pub fn reset(&mut self) {
         self.qty_filled = 0;
-        for i in 0..BRICKS_QTY {
-            self.letter_brick[i].targetted = false;
-            self.letter_brick[i].filled = false;
+        for b in &mut self.letter_brick.iter_mut() {
+            b.targetted = false;
+            b.filled = false;
         }
     }
 
@@ -199,12 +199,10 @@ impl LetterBricks {
     }
 
     pub fn render(&self, c: Context, g: &mut G2d) {
-        for i in 0..BRICKS_QTY {
-            if self.letter_brick[i].filled {
-                let x = LETTER_BRICKS_X + self.letter_brick[i].col * BRICK_WIDTH;
-                let y = LETTER_BRICKS_Y + self.letter_brick[i].row * BRICK_HEIGHT;
-                image(&self.brick_image, c.transform.trans(x as f64, y as f64), g);
-            }
+        for b in self.letter_brick.iter().filter(|&b| b.filled) {
+            let x = LETTER_BRICKS_X + b.col * BRICK_WIDTH;
+            let y = LETTER_BRICKS_Y + b.row * BRICK_HEIGHT;
+            image(&self.brick_image, c.transform.trans(x as f64, y as f64), g);
         }
     }
 }
