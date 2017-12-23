@@ -106,7 +106,7 @@ fn main() {
                         &format!("{:07}", score),
                         &mut glyphs,
                         &c.draw_state,
-                        c.transform.trans(100.0, 32.0),
+                        c.transform.trans(common::SCREEN_WIDTH / 2.0 - 60.0, 32.0),
                         g
                         ).unwrap();
                     if let GameState::GameOver = game_state {
@@ -146,7 +146,7 @@ fn main() {
                 _ => {}
             }
 
-            if let Some(u) = e.update_args() {
+            if let Some(_) = e.update_args() {
                 frame_count += 1;
                 
                 if game_state.playing() {
@@ -170,24 +170,25 @@ fn main() {
                     spiders.update(&mother, &mut base_bricks, &mut letter_bricks,
                         &mut bombs, ship.in_changeover() && game_state.playing(), frame_count);
                 }
-                collision::missile_collision(&mut missile, &mut spiders,
-                    &mut base_bricks, &mut letter_bricks, &mut score);
-                collision::bomb_collision(&mut bombs, &mut ship);
-                collision::spider_collision(&mut spiders, &mut ship,
-                    &mut base_bricks, &mut letter_bricks);
-                if ship.waiting_for_changeover() && spiders.clear() && ! bombs.in_flight() {
-                    ship.proceed_with_changeover();
+                if game_state.playing() {
+                    collision::missile_collision(&mut missile, &mut spiders,
+                        &mut base_bricks, &mut letter_bricks, &mut score);
+                    collision::bomb_collision(&mut bombs, &mut ship);
+                    collision::spider_collision(&mut spiders, &mut ship,
+                        &mut base_bricks, &mut letter_bricks);
+                    if ship.waiting_for_changeover() && spiders.clear() && ! bombs.in_flight() {
+                        ship.proceed_with_changeover();
+                    }
+                    if letter_bricks.complete() || ! ship.life_left() {
+                        game_state = GameState::GameOver;
+                        common::sound_off();
+                    }
                 }
-                if game_state.playing() && (letter_bricks.complete() || ! ship.life_left()) {
-                    game_state = GameState::GameOver;
-                    common::sound_off();
-                }
-                if game_state.screen_in_progress() && ! spiders.spiders_remain() {
+                if game_state.screen_in_progress() && ! spiders.spiders_remain() && ! bombs.in_flight() {
                     screen += 1;
                     game_state = GameState::ScreenStart(1.0);
                     mother.reset();
                     spiders.reset();
-                    bombs.reset();
                     frame_count = 0;
                 }
                 if (! game_state.playing()) && start_pressed {

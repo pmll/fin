@@ -25,8 +25,8 @@ const SPEED_MEDIUM: f64 = 3.0;
 const SPEED_FAST: f64 = 4.0;
 const SPEED: [[(f64, f64); 3]; 3] =
     [[(SPEED_SLOW, SPEED_SLOW), (SPEED_SLOW / 2.0, SPEED_SLOW), (0.0, SPEED_SLOW)],
-     [(SPEED_MEDIUM * 2.0, SPEED_MEDIUM), (SPEED_MEDIUM, SPEED_MEDIUM), (SPEED_MEDIUM / 2.0, SPEED_MEDIUM)],
-     [(SPEED_FAST, 0.0), (SPEED_FAST * 2.0, SPEED_FAST), (SPEED_FAST, SPEED_FAST)]];
+     [(SPEED_MEDIUM, SPEED_MEDIUM / 2.0), (SPEED_MEDIUM, SPEED_MEDIUM), (SPEED_MEDIUM / 2.0, SPEED_MEDIUM)],
+     [(SPEED_FAST, 0.0), (SPEED_FAST, SPEED_FAST / 2.0), (SPEED_FAST, SPEED_FAST)]];
 const SPIDER_ASCEND_Y: f64 = 510.0;
 const BOMB_RELEASE_MAX_Y: f64 = 410.0;
 
@@ -40,7 +40,8 @@ enum State {
     Ascend,
     Carry(f64, f64, Option<common::TargetBrick>),
     Release(f64, f64),
-    Dead(usize),
+    Dying(usize),
+    Dead,
 }
 
 #[derive(Copy, Clone)]
@@ -73,8 +74,11 @@ impl Spider {
     }
 
     fn alive(&self) -> bool {
-        if let State::Dead(_) = self.state {false} else {true}
-
+        match self.state {
+            State::Dying(_) => {false},
+            State::Dead => {false},
+            _ => {true},
+        }
     }
 
     fn launch(&mut self, mother: &Mother) -> bool {
@@ -341,9 +345,13 @@ impl Spider {
                     self.state = State::Seek(x_vel, y_vel, None);
                 }
             },
-            State::Dead(i) => {
-                // care much that this carries on counting for the rest of the screen?
-                self.state = State::Dead(i + 1);
+            State::Dying(n) => {
+                if n < 20 {
+                    self.state = State::Dying(n + 1);
+                }
+                else {
+                    self.state = State::Dead;
+                }
             }
             _ => {}
         }
@@ -454,8 +462,12 @@ impl Spiders {
             self.spiders_in_flight += 1;
             self.last_launch_frame = frame_count;
         }
-        for s in self.spider.iter_mut() {
-            s.update(base_bricks, letter_bricks, bombs, restrict)
+        for s in self.spider.iter_mut().filter(|s| match s.state {State::Dead => {false}, _ => {true}}) {
+            s.update(base_bricks, letter_bricks, bombs, restrict);
+            if let State::Dead = s.state {
+                self.spiders_in_flight -= 1;
+                self.spiders_left -= 1;
+            }
         }
     }
 
@@ -497,10 +509,12 @@ impl Spiders {
         }
     }
 
+    pub fn spider_type(&self, spider_id: usize) -> usize {
+        self.spider[spider_id].spider_type as usize
+    }
+
     pub fn kill(&mut self, spider_id: usize) {
-        self.spider[spider_id].state = State::Dead(0);
-        self.spiders_in_flight -= 1;
-        self.spiders_left -= 1;
+        self.spider[spider_id].state = State::Dying(0);
         common::play_sound(&common::Sound::SpiderExplode);
     }
 
@@ -566,12 +580,13 @@ impl Spiders {
                           .trans(- SPIDER_WIDTH * 0.5, - SPIDER_HEIGHT * 0.5),
                           g);
                 },
-                State::Dead(i) => {
+                State::Dying(i) => {
                     if i < 20 {
                         image(&self.spider_image_explosion[i / 5],
                               c.transform.trans(spider.x, spider.y), g);
                     }
                 },
+                _ => {},
             };
         }
     }

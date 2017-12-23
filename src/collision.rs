@@ -5,6 +5,8 @@ use missile::Missile;
 use bombs::Bombs;
 use ship::Ship;
 
+const SPIDER_SCORE: [u32; 3] = [40, 80, 200];
+
 // a collision means occupying the same space in the same frame
 // that may turn out to be too naive but it will do for now
 pub fn missile_collision(missile: &mut Missile, spiders: &mut Spiders,
@@ -23,8 +25,12 @@ pub fn missile_collision(missile: &mut Missile, spiders: &mut Spiders,
                 }
             }
             missile.terminate_flight();
+            let points = SPIDER_SCORE[spiders.spider_type(spider_id)];
+            *score += points;
+            if spiders.carrying(spider_id) {
+                *score += points;
+            }
             spiders.kill(spider_id);
-            // todo: score
         }
     }
 }
