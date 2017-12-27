@@ -53,7 +53,7 @@ pub fn find_asset(file_name: &str) -> PathBuf {
 }
 
 pub fn win_image(window: &mut PistonWindow, file_name: &str) -> G2dTexture {
-    let image_path = find_asset(file_name);
+    let image_path = find_asset(&format!("image/{}", file_name));
     Texture::from_path(
         &mut window.factory,
         &image_path,

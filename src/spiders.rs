@@ -65,12 +65,13 @@ struct Spider {
     y: f64,
     next_dir_change: u32,
     next_bomb_release: u32,
+    anim_offset: i32,
 }
 
 impl Spider {
     fn new() -> Spider {
         Spider {spider_type: Type::Medium, state: State::Nestle, x: 0.0, y: 0.0,
-            next_dir_change: 0, next_bomb_release: 0}
+            next_dir_change: 0, next_bomb_release: 0, anim_offset: 0}
     }
 
     fn alive(&self) -> bool {
@@ -432,6 +433,7 @@ impl Spiders {
             // for nestle spiders, x and y are relative to mother
             new_spiders.spider[i].y = ((i / 15) * 8) as f64 - 16.0;
             new_spiders.spider[i].x = ((i % 15) * 6 + 5) as f64;
+            new_spiders.spider[i].anim_offset = rand::thread_rng().gen_range(0, SPIDER_PERIOD);
         }
         new_spiders
     }
@@ -527,19 +529,16 @@ impl Spiders {
     }
 
     pub fn render(&self, mother: &Mother, c: Context, g: &mut G2d, frame_count: i32) {
-        let anim_frame = ((frame_count % SPIDER_PERIOD) / (SPIDER_PERIOD / 4)) as usize;
         let (mother_x, mother_y) = mother.location();
         for spider in self.spider.iter() {
-            let type_i = match spider.spider_type {
-                Type::Slow => 0,
-                Type::Medium => 1,
-                Type::Fast => 2
-            };
+            let anim_frame = (((frame_count + spider.anim_offset) % SPIDER_PERIOD) /
+                (SPIDER_PERIOD / 4)) as usize;
+            let type_i = spider.spider_type as usize;
             match spider.state {
                 State::Nestle => {
                     let x = spider.x + mother_x;
                     let y = spider.y + mother_y;
-                    image(&self.spider_image_empty[type_i][anim_frame],
+                    image(&self.spider_image_empty[type_i][3],
                           c.transform.trans(x, y).flip_v().zoom(0.2), g);
                 },
                 State::Swoop(n, r) => {

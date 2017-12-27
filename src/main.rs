@@ -69,7 +69,7 @@ fn main() {
     let mut spiders = Spiders::new(&mut window);
     let mut bombs = Bombs::new(&mut window);
  
-    let ref font = common::find_asset("FiraSans-Regular.ttf");
+    let ref font = common::find_asset("font/FiraSans-Regular.ttf");
     let factory = window.factory.clone();
     let mut glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
 
@@ -83,11 +83,11 @@ fn main() {
     let mut screen = 0;
 
     music::start::<common::Music, common::Sound, _>(16, || {
-        music::bind_sound_file(common::Sound::Fire, common::find_asset("fire.wav"));
-        music::bind_sound_file(common::Sound::TakeBrick, common::find_asset("grab.wav"));
-        music::bind_sound_file(common::Sound::DepositBrick, common::find_asset("drop.wav"));
-        music::bind_sound_file(common::Sound::SpiderExplode, common::find_asset("spider_explosion.wav"));
-        music::bind_sound_file(common::Sound::ShipExplode, common::find_asset("ship_explosion.wav"));
+        music::bind_sound_file(common::Sound::Fire, common::find_asset("sound/fire.wav"));
+        music::bind_sound_file(common::Sound::TakeBrick, common::find_asset("sound/grab.wav"));
+        music::bind_sound_file(common::Sound::DepositBrick, common::find_asset("sound/drop.wav"));
+        music::bind_sound_file(common::Sound::SpiderExplode, common::find_asset("sound/spider_explosion.wav"));
+        music::bind_sound_file(common::Sound::ShipExplode, common::find_asset("sound/ship_explosion.wav"));
 
         while let Some(e) = window.next() {
             if let Some(_) = e.render_args() {
