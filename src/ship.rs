@@ -3,8 +3,8 @@ use piston_window::*;
 use common;
 
 const SHIP_WIDTH: f64 = 30.0;
-const SHIP_HEIGHT: f64 = 45.0;
-const SHIP_Y: f64 = 560.0;
+const SHIP_HEIGHT: f64 = 40.0;
+const SHIP_Y: f64 = 565.0;
 const SHIP_SPEED: f64 = 5.0;
 const LIVES: u32 = 4;
 const LIVES_Y: f64 = common::SCREEN_HEIGHT - 2.0 - SHIP_HEIGHT / 2.0;
@@ -33,10 +33,10 @@ impl Ship {
              ship_image: [common::win_image(window, "ship1.png"),
                           common::win_image(window, "ship2.png"),
                           common::win_image(window, "ship3.png")],
-             explosion_image: [common::win_image(window, "spider_explosion1.png"),  // for now...
-                               common::win_image(window, "spider_explosion2.png"),
-                               common::win_image(window, "spider_explosion3.png"),
-                               common::win_image(window, "spider_explosion4.png")]}
+             explosion_image: [common::win_image(window, "ship_explosion1.png"),
+                               common::win_image(window, "ship_explosion2.png"),
+                               common::win_image(window, "ship_explosion3.png"),
+                               common::win_image(window, "ship_explosion4.png")]}
     }
 
     fn home_x() -> f64 {

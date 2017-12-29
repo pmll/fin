@@ -68,6 +68,9 @@ fn main() {
     let mut mother = Mother::new(&mut window);
     let mut spiders = Spiders::new(&mut window);
     let mut bombs = Bombs::new(&mut window);
+
+    let game_over_image = common::win_image(&mut window, "game_over.png");
+    let instructions_image = common::win_image(&mut window, "instructions.png");
  
     let ref font = common::find_asset("font/FiraSans-Regular.ttf");
     let factory = window.factory.clone();
@@ -110,13 +113,18 @@ fn main() {
                         g
                         ).unwrap();
                     if let GameState::GameOver = game_state {
-                        render_text(c, g, &mut glyphs, 100.0, 300.0, 64, "Game Over");
+                        image(&game_over_image, c.transform.trans(87.0, 250.0), g);
+                        //render_text(c, g, &mut glyphs, 100.0, 300.0, 64, "Game Over");
                     }
                     if ! game_state.playing() {
+                        // image eats a lot less cpu than rendering text
+                        image(&instructions_image, c.transform.trans(152.0, 350.0), g);
+                        /*
                         render_text(c, g, &mut glyphs, 100.0, 350.0, 32, "Play Fin");
                         render_text(c, g, &mut glyphs, 100.0, 400.0, 20, "Don't let the spiders spell their word");
                         render_text(c, g, &mut glyphs, 100.0, 450.0, 32, "Press space to play");
                         render_text(c, g, &mut glyphs, 100.0, 500.0, 32, "Press escape to exit at any time");
+                        */
                     }
                     if let GameState::ScreenStart(fade) = game_state {
                         if fade > 0.0 {
@@ -150,6 +158,8 @@ fn main() {
                 frame_count += 1;
                 
                 if game_state.playing() {
+                    missile.update();
+                    ship.update();
                     if left_pressed {
                         ship.move_left();
                     }
@@ -160,8 +170,6 @@ fn main() {
                         ship.launch_missile(&mut missile);
                         fire_pressed = false;
                     }
-                    missile.update();
-                    ship.update();
                 }
                 if game_state.screen_in_progress() || ! game_state.playing() {
                     base_bricks.update();
@@ -213,7 +221,7 @@ fn main() {
     });
 }
 
-
+/*
 fn render_text(c: Context, g: &mut G2d, glyphs: &mut Glyphs, x: f64, y: f64, sz: u32, txt: &str) {
     text::Text::new_color([1.0, 1.0, 1.0, 1.0], sz).draw(
         txt,
@@ -223,6 +231,7 @@ fn render_text(c: Context, g: &mut G2d, glyphs: &mut Glyphs, x: f64, y: f64, sz:
         g
         ).unwrap();
 }
+*/
 
 fn render_attack_text(c: Context, g: &mut G2d, glyphs: &mut Glyphs, screen: u32, fade: f32) {
     text::Text::new_color([0.31, 0.47, 0.71, fade], 40).draw(
