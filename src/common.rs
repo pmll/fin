@@ -1,11 +1,9 @@
-// 
 use piston_window::*;
 use std::path::PathBuf;
 use find_folder;
-use music;
 
-// shock/horror
-static mut SOUND_IS_ON: bool = false;
+pub const SCREEN_WIDTH: f64 = 600.0;
+pub const SCREEN_HEIGHT: f64 = 700.0;
 
 #[derive(Copy, Clone)]
 pub struct TargetBrick {
@@ -13,21 +11,6 @@ pub struct TargetBrick {
     pub y: f64,
     pub brick_id: usize,
 }
-
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum Sound {
-    Fire,
-    ShipExplode,
-    SpiderExplode,
-    TakeBrick,
-    DepositBrick,
-}
-
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum Music {}
-
-pub const SCREEN_WIDTH: f64 = 600.0;
-pub const SCREEN_HEIGHT: f64 = 700.0;
 
 pub struct ScreenObjectArea {
     tl_x: f64,
@@ -61,24 +44,3 @@ pub fn win_image(window: &mut PistonWindow, file_name: &str) -> G2dTexture {
         &TextureSettings::new()
     ).unwrap()
 }
-
-pub fn play_sound(sound: &Sound) {
-    unsafe {
-        if SOUND_IS_ON {
-            music::play_sound(sound, music::Repeat::Times(0), music::MAX_VOLUME);
-        }
-    }
-}
-
-pub fn sound_on() {
-    unsafe {
-        SOUND_IS_ON = true;
-    }
-}
-
-pub fn sound_off() {
-    unsafe {
-        SOUND_IS_ON = false;
-    }
-}
-

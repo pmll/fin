@@ -1,6 +1,9 @@
 
 use piston_window::*;
+
+use missile;
 use common;
+use soundfx;
 
 const SHIP_WIDTH: f64 = 30.0;
 const SHIP_HEIGHT: f64 = 40.0;
@@ -65,10 +68,10 @@ impl Ship {
         }
     }
 
-    pub fn kill(&mut self) {
+    pub fn kill(&mut self, sound: &soundfx::SoundFx) {
         if let ShipState::Alive = self.state {
             self.state = ShipState::Dead(0);
-            common::play_sound(&common::Sound::ShipExplode);
+            sound.ship_explode();
         }
     }
 
@@ -112,9 +115,9 @@ impl Ship {
         }
     }
 
-    pub fn launch_missile(&self, missile: &mut ::Missile) {
+    pub fn launch_missile(&self, missile: &mut missile::Missile, sound: &soundfx::SoundFx) {
         if let ShipState::Alive = self.state {
-            missile.launch(self.x + (SHIP_WIDTH / 2.0).floor(), SHIP_Y);
+            missile.launch(self.x + (SHIP_WIDTH / 2.0).floor(), SHIP_Y, sound);
         }
     }
 
@@ -144,7 +147,7 @@ impl Ship {
         LIVES_X - life as f64 * (SHIP_WIDTH / 2.0 + 10.0)
     }
 
-    pub fn render(&self, c: Context, g: &mut G2d, frame_count: i32) {
+    pub fn render(&self, c: Context, g: &mut G2d, frame_count: u32) {
         match self.state {
             ShipState::Alive => {
                 let ship_pulse = frame_count % 30;

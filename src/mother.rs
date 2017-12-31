@@ -4,7 +4,7 @@ use common;
 const MOTHER_Y: f64 = 100.0;
 const MOTHER_WIDTH: f64 = 100.0;
 const MOTHER_HEIGHT: f64 = 20.0;
-const MOTHER_PERIOD: i32 = 32;
+const MOTHER_PERIOD: u32 = 32;
 const MOTHER_SPEED: f64 = 2.0;
 
 pub struct Mother {
@@ -52,7 +52,7 @@ impl Mother {
         }
     }
 
-    pub fn render(&self, c: Context, g: &mut G2d, frame_count: i32) {
+    pub fn render(&self, c: Context, g: &mut G2d, frame_count: u32) {
         let mother_image = if frame_count % MOTHER_PERIOD < MOTHER_PERIOD / 2
             {&self.mother_image1} else {&self.mother_image2};
         image(mother_image, c.transform.trans(self.x, MOTHER_Y), g);

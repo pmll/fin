@@ -1,23 +1,25 @@
 
 use piston_window::*;
+use rand;
+use rand::Rng;
+use std::f64::consts::PI;
+
 use common;
 use common::win_image;
 use mother::Mother;
 use base_bricks::BaseBricks;
 use letter_bricks::LetterBricks;
 use bombs::Bombs;
-use rand;
-use rand::Rng;
-use std::f64::consts::PI;
+use soundfx::SoundFx;
 
 const NUMBER_OF_SPIDERS: usize = 45;
 const MAX_SPIDERS_IN_FLIGHT: u32 = 6;
 const SPIDER_WIDTH: f64 = 30.0;
 const SPIDER_HEIGHT: f64 = 40.0;
-const SPIDER_PERIOD: i32 = 20;
+const SPIDER_PERIOD: u32 = 20;
 const SPIDER_ROTATE_SPEED: f64 = 0.05;
 const SWOOP_SPEED: f64 = 5.0;
-const FRAMES_BETWEEN_LAUNCHES: i32 = 30;
+const FRAMES_BETWEEN_LAUNCHES: u32 = 30;
 const FLIGHT_SPIDER_Y_MAX: f64 = 500.0;
 const FLIGHT_SPIDER_Y_MIN: f64 = 200.0;
 const SPEED_SLOW: f64 = 2.0;
@@ -65,7 +67,7 @@ struct Spider {
     y: f64,
     next_dir_change: u32,
     next_bomb_release: u32,
-    anim_offset: i32,
+    anim_offset: u32,
 }
 
 impl Spider {
@@ -177,7 +179,7 @@ impl Spider {
     }
 
     fn update(&mut self, base_bricks: &mut BaseBricks, letter_bricks: &mut LetterBricks,
-        bombs: &mut Bombs, restrict: bool) {
+        bombs: &mut Bombs, restrict: bool, sound: &SoundFx) {
         match self.state {
             State::Swoop(n, r) => {
                 if n < 1.0 {
@@ -255,7 +257,7 @@ impl Spider {
                     // transform coords to centre of spider
                     self.x += SPIDER_WIDTH * 0.5;
                     self.y += SPIDER_HEIGHT * 0.5;
-                    common::play_sound(&common::Sound::TakeBrick);
+                    sound.take_brick();
                 }
             },
             State::Grab(n, r) => {
@@ -300,7 +302,7 @@ impl Spider {
                             self.state = State::Release(0.0, if rand::thread_rng().gen() {-1.0} else {1.0});
                             self.x = adj_x + SPIDER_WIDTH * 0.5;
                             self.y = adj_y + SPIDER_HEIGHT * 0.5;
-                            common::play_sound(&common::Sound::DepositBrick);
+                            sound.deposit_brick();
                         }
                         // Are we already on a trajectory to reach the target?
                         else if self.trajectory_reaches_target(adj_x, adj_y, x_vel, y_vel) {
@@ -379,7 +381,7 @@ pub struct Spiders {
     spiders_left: u32,
     spiders_in_flight: u32,
     next_spider_launch: usize,
-    last_launch_frame: i32,
+    last_launch_frame: u32,
     spider: [Spider; NUMBER_OF_SPIDERS],
 }
 
@@ -454,7 +456,7 @@ impl Spiders {
 
     pub fn update(&mut self, mother: &Mother, base_bricks: &mut BaseBricks,
                   letter_bricks: &mut LetterBricks, bombs: &mut Bombs, 
-                  restrict: bool, frame_count: i32) {
+                  restrict: bool, frame_count: u32, sound: &SoundFx) {
         if self.spiders_in_flight < MAX_SPIDERS_IN_FLIGHT &&
            self.next_spider_launch < NUMBER_OF_SPIDERS &&
            frame_count - self.last_launch_frame >= FRAMES_BETWEEN_LAUNCHES &&
@@ -465,7 +467,7 @@ impl Spiders {
             self.last_launch_frame = frame_count;
         }
         for s in self.spider.iter_mut().filter(|s| match s.state {State::Dead => {false}, _ => {true}}) {
-            s.update(base_bricks, letter_bricks, bombs, restrict);
+            s.update(base_bricks, letter_bricks, bombs, restrict, sound);
             if let State::Dead = s.state {
                 self.spiders_in_flight -= 1;
                 self.spiders_left -= 1;
@@ -515,9 +517,9 @@ impl Spiders {
         self.spider[spider_id].spider_type as usize
     }
 
-    pub fn kill(&mut self, spider_id: usize) {
+    pub fn kill(&mut self, spider_id: usize, sound: &SoundFx) {
         self.spider[spider_id].state = State::Dying(0);
-        common::play_sound(&common::Sound::SpiderExplode);
+        sound.spider_explode();
     }
 
     pub fn spiders_remain(&self) -> bool {
@@ -528,7 +530,7 @@ impl Spiders {
         ! self.spider.iter().any(|&s| s.alive() && s.y > FLIGHT_SPIDER_Y_MAX)
     }
 
-    pub fn render(&self, mother: &Mother, c: Context, g: &mut G2d, frame_count: i32) {
+    pub fn render(&self, mother: &Mother, c: Context, g: &mut G2d, frame_count: u32) {
         let (mother_x, mother_y) = mother.location();
         for spider in self.spider.iter() {
             let anim_frame = (((frame_count + spider.anim_offset) % SPIDER_PERIOD) /

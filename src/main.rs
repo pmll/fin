@@ -12,41 +12,13 @@ mod missile;
 mod mother;
 mod spiders;
 mod bombs;
-mod collision;
+mod soundfx;
+mod game;
 
 use piston_window::*;
 
-use ship::Ship;
-use base_bricks::BaseBricks;
-use letter_bricks::LetterBricks;
-use missile::Missile;
-use mother::Mother;
-use spiders::Spiders;
-use bombs::Bombs;
-
-enum GameState {
-    Startup,
-    ScreenStart(f32),
-    InProgress,
-    GameOver,
-}
-
-impl GameState {
-    fn playing(&self) -> bool {
-        match *self {
-            GameState::Startup => {false},
-            GameState::GameOver => {false},
-            _ => {true},
-        }
-    }
-
-    fn screen_in_progress(&self) -> bool {
-        match *self {
-            GameState::InProgress => {true},
-            _ => {false},
-        }
-    }
-}
+use game::Game;
+use soundfx::SoundFx;
 
 fn main() {
     let opengl = OpenGL::V2_1;
@@ -61,184 +33,29 @@ fn main() {
 
     window.set_ups(60);
 
-    let mut ship = Ship::new(&mut window);
-    let mut missile = Missile::new(&mut window);
-    let mut base_bricks = BaseBricks::new(&mut window);
-    let mut letter_bricks = LetterBricks::new(&mut window);
-    let mut mother = Mother::new(&mut window);
-    let mut spiders = Spiders::new(&mut window);
-    let mut bombs = Bombs::new(&mut window);
-
-    let game_over_image = common::win_image(&mut window, "game_over.png");
-    let instructions_image = common::win_image(&mut window, "instructions.png");
- 
     let ref font = common::find_asset("font/FiraSans-Regular.ttf");
     let factory = window.factory.clone();
     let mut glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
 
-    let mut left_pressed = false;
-    let mut right_pressed = false;
-    let mut fire_pressed = false;
-    let mut start_pressed = false;
-    let mut frame_count = 0;
-    let mut game_state = GameState::Startup;
-    let mut score = 0;
-    let mut screen = 0;
+    let mut game = Game::new(&mut window);
 
-    music::start::<common::Music, common::Sound, _>(16, || {
-        music::bind_sound_file(common::Sound::Fire, common::find_asset("sound/fire.wav"));
-        music::bind_sound_file(common::Sound::TakeBrick, common::find_asset("sound/grab.wav"));
-        music::bind_sound_file(common::Sound::DepositBrick, common::find_asset("sound/drop.wav"));
-        music::bind_sound_file(common::Sound::SpiderExplode, common::find_asset("sound/spider_explosion.wav"));
-        music::bind_sound_file(common::Sound::ShipExplode, common::find_asset("sound/ship_explosion.wav"));
+    music::start::<soundfx::Music, soundfx::Sound, _>(16, || {
+        SoundFx::bind_sound_files();
 
         while let Some(e) = window.next() {
             if let Some(_) = e.render_args() {
                 window.draw_2d(&e, |c, g| {
                     clear([0.0, 0.0, 0.0, 1.0], g);
-                    base_bricks.render(c, g);
-                    letter_bricks.render(c, g);
-                    mother.render(c, g, frame_count);
-                    spiders.render(&mother, c, g, frame_count);
-                    if game_state.playing() {
-                        ship.render(c, g, frame_count);
-                        missile.render(c, g);
-                    }
-                    bombs.render(c, g);
-                    text::Text::new_color([0.0, 0.0, 1.0, 1.0], 32).draw(
-                        &format!("{:07}", score),
-                        &mut glyphs,
-                        &c.draw_state,
-                        c.transform.trans(common::SCREEN_WIDTH / 2.0 - 60.0, 32.0),
-                        g
-                        ).unwrap();
-                    if let GameState::GameOver = game_state {
-                        image(&game_over_image, c.transform.trans(87.0, 250.0), g);
-                        //render_text(c, g, &mut glyphs, 100.0, 300.0, 64, "Game Over");
-                    }
-                    if ! game_state.playing() {
-                        // image eats a lot less cpu than rendering text
-                        image(&instructions_image, c.transform.trans(152.0, 350.0), g);
-                        /*
-                        render_text(c, g, &mut glyphs, 100.0, 350.0, 32, "Play Fin");
-                        render_text(c, g, &mut glyphs, 100.0, 400.0, 20, "Don't let the spiders spell their word");
-                        render_text(c, g, &mut glyphs, 100.0, 450.0, 32, "Press space to play");
-                        render_text(c, g, &mut glyphs, 100.0, 500.0, 32, "Press escape to exit at any time");
-                        */
-                    }
-                    if let GameState::ScreenStart(fade) = game_state {
-                        if fade > 0.0 {
-                            render_attack_text(c, g, &mut glyphs, screen, fade);
-                            game_state = GameState::ScreenStart(fade - 0.01);
-                        }
-                        else {
-                            game_state = GameState::InProgress;
-                        }
-                    }
+                    game.render(c, g, &mut glyphs);
                 });
             }
 
-            match e.press_args() {
-                Some(Button::Keyboard(Key::Z)) => {left_pressed = true;},
-                Some(Button::Keyboard(Key::X)) => {right_pressed = true;},
-                Some(Button::Keyboard(Key::RShift)) => {fire_pressed = true;},
-                Some(Button::Keyboard(Key::Space)) => {start_pressed = true;}
-                _ => {}
-            }
-
-            match e.release_args() {
-                Some(Button::Keyboard(Key::Z)) => {left_pressed = false;},
-                Some(Button::Keyboard(Key::X)) => {right_pressed = false;},
-                //Some(Button::Keyboard(Key::RShift)) => {fire_pressed = false;},
-                Some(Button::Keyboard(Key::Space)) => {start_pressed = false;}
-                _ => {}
-            }
+            game.update_inputs(&e);
 
             if let Some(_) = e.update_args() {
-                frame_count += 1;
-                
-                if game_state.playing() {
-                    missile.update();
-                    ship.update();
-                    if left_pressed {
-                        ship.move_left();
-                    }
-                    else if right_pressed {
-                        ship.move_right();
-                    }
-                    if fire_pressed {
-                        ship.launch_missile(&mut missile);
-                        fire_pressed = false;
-                    }
-                }
-                if game_state.screen_in_progress() || ! game_state.playing() {
-                    base_bricks.update();
-                    mother.update();
-                    bombs.update();
-                    spiders.update(&mother, &mut base_bricks, &mut letter_bricks,
-                        &mut bombs, ship.in_changeover() && game_state.playing(), frame_count);
-                }
-                if game_state.playing() {
-                    collision::missile_collision(&mut missile, &mut spiders,
-                        &mut base_bricks, &mut letter_bricks, &mut score);
-                    collision::bomb_collision(&mut bombs, &mut ship);
-                    collision::spider_collision(&mut spiders, &mut ship,
-                        &mut base_bricks, &mut letter_bricks);
-                    if ship.waiting_for_changeover() && spiders.clear() && ! bombs.in_flight() {
-                        ship.proceed_with_changeover();
-                    }
-                    if letter_bricks.complete() || ! ship.life_left() {
-                        game_state = GameState::GameOver;
-                        common::sound_off();
-                    }
-                }
-                if game_state.screen_in_progress() && ! spiders.spiders_remain() && ! bombs.in_flight() {
-                    screen += 1;
-                    game_state = GameState::ScreenStart(1.0);
-                    mother.reset();
-                    spiders.reset();
-                    frame_count = 0;
-                }
-                if (! game_state.playing()) && start_pressed {
-                    game_state = GameState::ScreenStart(1.0);
-                    mother.reset();
-                    spiders.reset();
-                    ship.reset();
-                    missile.reset();
-                    base_bricks.reset();
-                    base_bricks.update();
-                    letter_bricks.reset();
-                    bombs.reset();
-                    score = 0;
-                    frame_count = 0;
-                    screen = 1;
-                    fire_pressed = false;
-                    common::sound_on();
-                    ship.proceed_with_changeover();
-                }
+                game.update();
             }
         }
     });
 }
 
-/*
-fn render_text(c: Context, g: &mut G2d, glyphs: &mut Glyphs, x: f64, y: f64, sz: u32, txt: &str) {
-    text::Text::new_color([1.0, 1.0, 1.0, 1.0], sz).draw(
-        txt,
-        glyphs,
-        &c.draw_state,
-        c.transform.trans(x, y),
-        g
-        ).unwrap();
-}
-*/
-
-fn render_attack_text(c: Context, g: &mut G2d, glyphs: &mut Glyphs, screen: u32, fade: f32) {
-    text::Text::new_color([0.31, 0.47, 0.71, fade], 40).draw(
-        &format!("Get ready for attack {}", screen),
-        glyphs,
-        &c.draw_state,
-        c.transform.trans(120.0, 350.0),
-        g
-        ).unwrap();
-}

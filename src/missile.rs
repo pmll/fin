@@ -1,5 +1,7 @@
 use piston_window::*;
+
 use common;
+use soundfx;
 
 const MISSILE_WIDTH: f64 = 3.0;
 const MISSILE_HEIGHT: f64 = 15.0;
@@ -22,12 +24,12 @@ impl Missile {
         self.in_flight = false;
     }
 
-    pub fn launch(&mut self, from_x: f64, from_y: f64) {
+    pub fn launch(&mut self, from_x: f64, from_y: f64, sound: &soundfx::SoundFx) {
         if ! self.in_flight {
             self.x = from_x - (MISSILE_WIDTH / 2.0).floor();
             self.y = from_y - MISSILE_HEIGHT;
             self.in_flight = true;
-            common::play_sound(&common::Sound::Fire);
+            sound.fire();
         }
     }
 
