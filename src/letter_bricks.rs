@@ -146,6 +146,16 @@ impl LetterBricks {
         return false;
     }
 
+    fn targetted_to_left(&self, id: usize) -> bool {
+        id > 0 && self.letter_brick[id - 1].targetted &&
+            self.letter_brick[id - 1].col == self.letter_brick[id].col - 1
+    }
+
+    fn targetted_to_right(&self, id: usize) -> bool {
+        id < BRICKS_QTY - 1 && self.letter_brick[id + 1].targetted &&
+            self.letter_brick[id + 1].col == self.letter_brick[id].col + 1
+    }
+
     pub fn fill_target(&mut self, brick_id: usize) {
         self.letter_brick[brick_id].filled = true;
         self.letter_brick[brick_id].targetted = false;
@@ -157,10 +167,11 @@ impl LetterBricks {
     }
 
     pub fn request_target(&mut self) -> Option<common::TargetBrick> {
-        // -> brick x,y brick id
         let mut target_list = [0; MAX_COMBINED_ROW_BRICKS];  
         let mut list_len: usize = 0;
 
+        // build a list of gaps in the topmost row of each letter that has
+        // unfilled bricks and is not physically next to another targetted gap
         if self.qty_filled < BRICKS_QTY {
             for i in 0..3 {
                 for j in 0..6 {
@@ -168,13 +179,10 @@ impl LetterBricks {
                         let from = self.letter_range[i][j][0];
                         let to = self.letter_range[i][j][1];
                         for k in from..to + 1 {
-                            if ! (self.letter_brick[k].filled || self.letter_brick[k].targetted) {
-                                // fixme: this is too terrible for words
-                                if (k == from || ! self.letter_brick[k - 1].targetted || self.letter_brick[k].col - self.letter_brick[k - 1].col != 1) &&
-                                   (k == to || ! self.letter_brick[k + 1].targetted || self.letter_brick[k + 1].col - self.letter_brick[k].col != 1) {
-                                    target_list[list_len] = k;
-                                    list_len += 1;
-                                }
+                            if ! (self.letter_brick[k].filled || self.letter_brick[k].targetted) &&
+                               ! (self.targetted_to_left(k) || self.targetted_to_right(k)) {
+                                target_list[list_len] = k;
+                                list_len += 1;
                             }
                         }
                         break;
@@ -182,6 +190,7 @@ impl LetterBricks {
                 }
             }
         }
+        // choose a random target from the list
         if list_len > 0 {
             let id = target_list[rand::thread_rng().gen_range(0, list_len)];
             let x = (LETTER_BRICKS_X + self.letter_brick[id].col * BRICK_WIDTH) as f64;

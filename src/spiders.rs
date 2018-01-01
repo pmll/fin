@@ -188,7 +188,7 @@ impl Spider {
                     self.y += (PI + PI * n * r).cos() * SWOOP_SPEED;
                 }
                 else {
-                    // transform from centre coords to top left coords
+                    // transform coords from centre to top left of spider
                     self.x = (self.x - SPIDER_WIDTH * 0.5).floor();
                     self.y = (self.y - SPIDER_HEIGHT * 0.5).floor();
                     let (x_vel, y_vel) = self.random_vel(DirRequired::Down);
@@ -254,9 +254,6 @@ impl Spider {
                 if self.y >= target.y - SPIDER_HEIGHT + 8.0 {
                     base_bricks.take_target(target.brick_id);
                     self.state = State::Grab(0.0, if rand::thread_rng().gen() {-1.0} else {1.0});
-                    // transform coords to centre of spider
-                    self.x += SPIDER_WIDTH * 0.5;
-                    self.y += SPIDER_HEIGHT * 0.5;
                     sound.take_brick();
                 }
             },
@@ -265,9 +262,6 @@ impl Spider {
                     self.state = State::Grab(n + SPIDER_ROTATE_SPEED, r);
                 }
                 else {
-                    // transform from centre coords to top left coords
-                    self.x -= SPIDER_WIDTH * 0.5;
-                    self.y -= SPIDER_HEIGHT * 0.5;
                     self.state = State::Ascend;
                 }
             },
@@ -300,8 +294,8 @@ impl Spider {
                            (self.y - adj_y).abs() < y_vel.abs() {
                             letter_bricks.fill_target(target_brick.brick_id);
                             self.state = State::Release(0.0, if rand::thread_rng().gen() {-1.0} else {1.0});
-                            self.x = adj_x + SPIDER_WIDTH * 0.5;
-                            self.y = adj_y + SPIDER_HEIGHT * 0.5;
+                            self.x = adj_x;
+                            self.y = adj_y;
                             sound.deposit_brick();
                         }
                         // Are we already on a trajectory to reach the target?
@@ -341,9 +335,6 @@ impl Spider {
                     self.state = State::Release(n + SPIDER_ROTATE_SPEED, r);
                 }
                 else {
-                    // transform from centre coords to top left coords
-                    self.x -= SPIDER_WIDTH * 0.5;
-                    self.y -= SPIDER_HEIGHT * 0.5;
                     let (x_vel, y_vel) = self.random_vel(DirRequired::Down);
                     self.state = State::Seek(x_vel, y_vel, None);
                 }
@@ -368,7 +359,7 @@ impl Spider {
             State::Seek(_, _, _) => {collides},
             State::Ascend => {collides},
             State::Carry(_, _, _) => {collides},
-            State::Release(_, _) => {collides},
+            State::Release(_, _) => {collides},  // this is not really accurate as rotating 
             _ => {false}
         }
     }
@@ -561,7 +552,7 @@ impl Spiders {
                 },
                 State::Grab(n, r) => {
                     image(&self.spider_image_laden[type_i][anim_frame],
-                          c.transform.trans(spider.x, spider.y)
+                          c.transform.trans(spider.x + SPIDER_WIDTH * 0.5, spider.y + SPIDER_HEIGHT * 0.5)
                           .rot_rad(PI + PI * n * r)
                           .trans(- SPIDER_WIDTH * 0.5, - SPIDER_HEIGHT * 0.5),
                           g);
@@ -576,7 +567,7 @@ impl Spiders {
                 },
                 State::Release(n, r) => {
                     image(&self.spider_image_empty[type_i][anim_frame],
-                          c.transform.trans(spider.x, spider.y)
+                          c.transform.trans(spider.x + SPIDER_WIDTH * 0.5, spider.y + SPIDER_HEIGHT * 0.5)
                           .rot_rad(PI + PI * n * r)
                           .trans(- SPIDER_WIDTH * 0.5, - SPIDER_HEIGHT * 0.5),
                           g);

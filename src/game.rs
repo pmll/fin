@@ -151,7 +151,7 @@ impl Game {
 
     fn render_attack_text(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs, fade: f32) {
         text::Text::new_color([0.31, 0.47, 0.71, fade], 40).draw(
-                &format!("Get ready for attack {}", self.screen),
+            &format!("Get ready for attack {}", self.screen),
             glyphs,
             &c.draw_state,
             c.transform.trans(120.0, 350.0),
