@@ -1,5 +1,9 @@
+use rand;
+use rand::Rng;
 use piston_window::*;
+
 use common;
+use bonus_bomb::BonusBomb;
 
 const MOTHER_Y: f64 = 100.0;
 const MOTHER_WIDTH: f64 = 100.0;
@@ -12,6 +16,7 @@ pub struct Mother {
     vel: f64,
     mother_image1: G2dTexture,
     mother_image2: G2dTexture,
+    bonus_bomb_frame: u32,
 }
 
 impl Mother {
@@ -20,18 +25,24 @@ impl Mother {
             x: (common::SCREEN_WIDTH - MOTHER_WIDTH) * 0.5,
             vel: MOTHER_SPEED,
             mother_image1: common::win_image(window, "mother1.png"),
-            mother_image2: common::win_image(window, "mother2.png")}
+            mother_image2: common::win_image(window, "mother2.png"),
+            bonus_bomb_frame: 0}
     }
 
     pub fn reset(&mut self) {
         self.x = (common::SCREEN_WIDTH - MOTHER_WIDTH) * 0.5;
+        //self.bonus_bomb_frame = 200 + rand::thread_rng().gen_range(0, 100);
+        self.bonus_bomb_frame = 2000 + rand::thread_rng().gen_range(0, 2000);
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, bonus_bomb: &mut BonusBomb, frame_count: u32) {
         self.x += self.vel;
         if self.x > common::SCREEN_WIDTH - MOTHER_WIDTH - MOTHER_SPEED || 
            self.x < MOTHER_SPEED {
             self.vel = - self.vel;
+        }
+        if frame_count == self.bonus_bomb_frame {
+            bonus_bomb.launch(self.x + MOTHER_WIDTH / 2.0);
         }
     }
 

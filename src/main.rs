@@ -14,6 +14,7 @@ mod spiders;
 mod bombs;
 mod soundfx;
 mod game;
+mod bonus_bomb;
 
 use piston_window::*;
 

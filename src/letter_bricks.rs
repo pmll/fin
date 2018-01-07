@@ -1,7 +1,9 @@
 use piston_window::*;
-use common;
 use rand;
 use rand::Rng;
+
+use common;
+use soundfx::SoundFx;
 
 const LETTER_BRICKS_Y: i32 = 140;
 const LETTER_BRICKS_X: i32 = 97;
@@ -9,6 +11,7 @@ const BRICK_HEIGHT: i32 = 10;
 const BRICK_WIDTH: i32 = 15;
 const BRICKS_QTY: usize = 86;
 const MAX_COMBINED_ROW_BRICKS: usize = 23;
+const REMOVE_PERIOD: u32 = 15;
 
 pub struct LetterBrick {
     row: i32,
@@ -26,6 +29,7 @@ impl LetterBrick {
 pub struct LetterBricks {
     letter_brick: [LetterBrick; BRICKS_QTY],
     letter_range: [[[usize; 2]; 6]; 3],
+    to_remove: Vec<usize>,
     qty_filled: usize,
     brick_image: G2dTexture,
 }
@@ -125,6 +129,7 @@ impl LetterBricks {
         letter_range: [[[0, 9], [20, 21], [30, 37], [47, 54], [64, 65], [74, 75]],
                        [[10, 15], [22, 23], [38, 39], [55, 56], [66, 67], [76, 81]],
                        [[16, 19],  [24, 29], [40, 46], [57, 63], [68, 73], [82, 85]]],
+        to_remove: Vec::with_capacity(50),
         qty_filled: 0,
         brick_image: common::win_image(window, "letterbrick.png")}
     }
@@ -135,6 +140,8 @@ impl LetterBricks {
             b.targetted = false;
             b.filled = false;
         }
+        self.to_remove.clear();
+        //self.test_fill(51);
     }
 
     fn row_has_gaps(&self, letter: usize, row: usize) -> bool {
@@ -203,8 +210,40 @@ impl LetterBricks {
         }
     }
 
+    pub fn initiate_removal(&mut self, qty: usize) {
+        // build list of filled bricks
+        for i in (0..BRICKS_QTY).rev() {
+            if self.letter_brick[i].filled {
+                self.to_remove.push(i);
+                if self.to_remove.len() >= qty {
+                    break;
+                }
+            }
+        }
+        self.to_remove.reverse();
+    }
+
+    /*
+    fn test_fill(&mut self, n: usize) {
+        for i in 0..n {
+            self.letter_brick[i].filled = true;
+        }
+        self.qty_filled = n;
+    }
+    */
+
     pub fn complete(&self) -> bool {
         self.qty_filled == BRICKS_QTY
+    }
+
+    pub fn update(&mut self, sound: &SoundFx, frame_count: u32) {
+        if frame_count % REMOVE_PERIOD == 0 {
+            if let Some(i) = self.to_remove.pop() {
+                self.letter_brick[i].filled = false;
+                self.qty_filled -= 1;
+                sound.remove_brick();
+            }
+        }
     }
 
     pub fn render(&self, c: Context, g: &mut G2d) {

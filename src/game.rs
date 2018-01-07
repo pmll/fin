@@ -10,6 +10,7 @@ use mother::Mother;
 use spiders::Spiders;
 use bombs::Bombs;
 use soundfx::SoundFx;
+use bonus_bomb::BonusBomb;
 
 const SPIDER_SCORE: [u32; 3] = [40, 80, 200];
 
@@ -91,6 +92,7 @@ pub struct Game {
     mother: Mother,
     spiders: Spiders,
     bombs: Bombs,
+    bonus_bomb: BonusBomb,
     game_over_image: G2dTexture,
     instructions_image: G2dTexture,
     game_input: GameInput,
@@ -111,6 +113,7 @@ impl Game {
             mother: Mother::new(window),
             spiders: Spiders::new(window),
             bombs: Bombs::new(window),
+            bonus_bomb: BonusBomb::new(window),
             game_over_image: common::win_image(window, "game_over.png"),
             instructions_image: common::win_image(window, "instructions.png"),
             game_input: GameInput::new(),
@@ -131,6 +134,7 @@ impl Game {
         self.base_bricks.update();
         self.letter_bricks.reset();
         self.bombs.reset();
+        self.bonus_bomb.reset();
         self.score = 0;
         self.frame_count = 0;
         self.screen = 1;
@@ -210,11 +214,20 @@ impl Game {
         }
     }
 
+    fn bonus_bomb_collision(&mut self) {
+        if self.missile.flying() && self.bonus_bomb.collision(self.missile.area()) {
+            self.missile.terminate_flight();
+            self.bonus_bomb.achieve_bonus(&mut self.letter_bricks);
+            self.sound.bonus_bomb_hit();
+        }
+    }
+
     pub fn render(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs) {
         self.base_bricks.render(c, g);
         self.letter_bricks.render(c, g);
         self.mother.render(c, g, self.frame_count);
         self.spiders.render(&self.mother, c, g, self.frame_count);
+        self.bonus_bomb.render(c, g, self.frame_count);
         if self.game_state.playing() {
             self.ship.render(c, g, self.frame_count);
             self.missile.render(c, g);
@@ -256,7 +269,9 @@ impl Game {
 
         if self.game_state.screen_in_progress() || ! self.game_state.playing() {
             self.base_bricks.update();
-            self.mother.update();
+            self.letter_bricks.update(&self.sound, self.frame_count);
+            self.bonus_bomb.update(&self.sound);
+            self.mother.update(&mut self.bonus_bomb, self.frame_count);
             self.bombs.update();
             self.spiders.update(
                 &self.mother,
@@ -269,6 +284,7 @@ impl Game {
         }
 
         if self.game_state.playing() {
+            self.bonus_bomb_collision();
             self.missile_collision();
             self.bomb_collision();
             self.spider_collision();
@@ -288,6 +304,7 @@ impl Game {
             self.screen += 1;
             self.game_state = State::ScreenStart(1.0);
             self.mother.reset();
+            self.bonus_bomb.reset();
             self.spiders.reset();
             self.frame_count = 0;
         }
