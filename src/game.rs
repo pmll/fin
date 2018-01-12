@@ -95,6 +95,7 @@ pub struct Game {
     bonus_bomb: BonusBomb,
     game_over_image: G2dTexture,
     instructions_image: G2dTexture,
+    screen_flag_image: G2dTexture,
     game_input: GameInput,
     frame_count: u32,
     score: u32,
@@ -116,6 +117,7 @@ impl Game {
             bonus_bomb: BonusBomb::new(window),
             game_over_image: common::win_image(window, "game_over.png"),
             instructions_image: common::win_image(window, "instructions.png"),
+            screen_flag_image: common::win_image(window, "screen_flag.png"),
             game_input: GameInput::new(),
             frame_count: 0,
             score: 0,
@@ -161,6 +163,15 @@ impl Game {
             c.transform.trans(120.0, 350.0),
             g
             ).unwrap();
+    }
+
+    fn render_screens_complete(&self, c: Context, g: &mut G2d) {
+        for i in 1..self.screen {
+            image(
+                &self.screen_flag_image,
+                c.transform.trans(i as f64 * 20.0 - 15.0, common::SCREEN_HEIGHT - 22.0),
+                g);
+        }
     }
 
     // a collision means occupying the same space in the same frame
@@ -223,6 +234,7 @@ impl Game {
     }
 
     pub fn render(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs) {
+        self.render_screens_complete(c, g);
         self.base_bricks.render(c, g);
         self.letter_bricks.render(c, g);
         self.mother.render(c, g, self.frame_count);
