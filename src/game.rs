@@ -265,6 +265,19 @@ impl Game {
         self.frame_count += 1;
 
         if self.game_state.playing() {
+            self.bonus_bomb_collision();
+            self.missile_collision();
+            self.bomb_collision();
+            self.spider_collision();
+            if self.ship.waiting_for_changeover() && self.spiders.clear() &&
+                ! self.bombs.in_flight() {
+                self.ship.proceed_with_changeover();
+            }
+            if self.letter_bricks.complete() || ! self.ship.life_left() {
+                self.game_state = State::GameOver;
+                self.sound.turn_off();
+            }
+
             self.missile.update();
             self.ship.update();
             if self.game_input.left_pressed {
@@ -293,21 +306,6 @@ impl Game {
                 self.ship.in_changeover() && self.game_state.playing(),
                 self.frame_count,
                 &self.sound);
-        }
-
-        if self.game_state.playing() {
-            self.bonus_bomb_collision();
-            self.missile_collision();
-            self.bomb_collision();
-            self.spider_collision();
-            if self.ship.waiting_for_changeover() && self.spiders.clear() &&
-                ! self.bombs.in_flight() {
-                self.ship.proceed_with_changeover();
-            }
-            if self.letter_bricks.complete() || ! self.ship.life_left() {
-                self.game_state = State::GameOver;
-                self.sound.turn_off();
-            }
         }
 
         if self.game_state.screen_in_progress() &&
