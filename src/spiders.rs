@@ -20,6 +20,7 @@ const SPIDER_PERIOD: u32 = 20;
 const SPIDER_ROTATE_SPEED: f64 = 0.05;
 const SWOOP_SPEED: f64 = 5.0;
 const FRAMES_BETWEEN_LAUNCHES: u32 = 30;
+const FIRST_LAUNCH: u32 = 100;
 const FLIGHT_SPIDER_Y_MAX: f64 = 480.0;
 const FLIGHT_SPIDER_Y_MIN: f64 = 200.0;
 const SPEED_SLOW: f64 = 2.0;
@@ -450,6 +451,7 @@ impl Spiders {
                   restrict: bool, frame_count: u32, sound: &SoundFx) {
         if self.spiders_in_flight < MAX_SPIDERS_IN_FLIGHT &&
            self.next_spider_launch < NUMBER_OF_SPIDERS &&
+           frame_count > FIRST_LAUNCH &&
            frame_count - self.last_launch_frame >= FRAMES_BETWEEN_LAUNCHES &&
            ! restrict &&
            self.spider[self.next_spider_launch].launch(mother) {

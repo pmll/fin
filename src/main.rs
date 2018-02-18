@@ -15,6 +15,7 @@ mod bombs;
 mod soundfx;
 mod game;
 mod bonus_bomb;
+mod animation;
 
 use piston_window::*;
 
@@ -46,7 +47,6 @@ fn main() {
         while let Some(e) = window.next() {
             if let Some(_) = e.render_args() {
                 window.draw_2d(&e, |c, g| {
-                    clear([0.0, 0.0, 0.0, 1.0], g);
                     game.render(c, g, &mut glyphs);
                 });
             }

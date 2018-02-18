@@ -11,12 +11,13 @@ use spiders::Spiders;
 use bombs::Bombs;
 use soundfx::SoundFx;
 use bonus_bomb::BonusBomb;
+use animation::Animation;
+use animation::Animations;
 
 const SPIDER_SCORE: [u32; 3] = [40, 80, 200];
 
 enum State {
     Startup,
-    ScreenStart(f32),
     InProgress,
     GameOver,
 }
@@ -43,6 +44,9 @@ struct GameInput {
     right_pressed: bool,
     fire_pressed: bool,
     start_pressed: bool,
+    pause_pressed: bool,
+    inc_vol_pressed: bool,
+    dec_vol_pressed: bool,
 }
 
 impl GameInput {
@@ -52,6 +56,9 @@ impl GameInput {
             right_pressed: false,
             fire_pressed: false,
             start_pressed: false,
+            pause_pressed: false,
+            inc_vol_pressed: false,
+            dec_vol_pressed: false,
         }
     }
 
@@ -60,6 +67,9 @@ impl GameInput {
         self.right_pressed = false;
         self.fire_pressed = false;
         self.start_pressed = false;
+        self.pause_pressed = false;
+        self.inc_vol_pressed = false;
+        self.dec_vol_pressed = false;
     }
 
     fn update_inputs(&mut self, e: &piston_window::Event) {
@@ -67,19 +77,31 @@ impl GameInput {
             Some(Button::Keyboard(Key::Z)) => {self.left_pressed = true;},
             Some(Button::Keyboard(Key::X)) => {self.right_pressed = true;},
             Some(Button::Keyboard(Key::RShift)) => {self.fire_pressed = true;},
-            Some(Button::Keyboard(Key::Space)) => {self.start_pressed = true;}
+            Some(Button::Keyboard(Key::Space)) => {self.start_pressed = true;},
+            Some(Button::Keyboard(Key::P)) => {self.pause_pressed = true;},
+            Some(Button::Keyboard(Key::Up)) => {self.inc_vol_pressed = true;},
+            Some(Button::Keyboard(Key::Down)) => {self.dec_vol_pressed = true;},
             _ => {}
         }
         match e.release_args() {
             Some(Button::Keyboard(Key::Z)) => {self.left_pressed = false;},
             Some(Button::Keyboard(Key::X)) => {self.right_pressed = false;},
-            Some(Button::Keyboard(Key::Space)) => {self.start_pressed = false;}
+            Some(Button::Keyboard(Key::Space)) => {self.start_pressed = false;},
             _ => {}
         }
     }
 
     fn acknowledge_fire(&mut self) {
         self.fire_pressed = false;
+    }
+
+    fn acknowledge_pause(&mut self) {
+        self.pause_pressed = false;
+    }
+
+    fn acknowledge_volume_change(&mut self) {
+        self.inc_vol_pressed = false;
+        self.dec_vol_pressed = false;
     }
 }
 
@@ -101,6 +123,8 @@ pub struct Game {
     score: u32,
     screen: u32,
     sound: SoundFx,
+    paused: bool,
+    animations: Animations,
 }
 
 impl Game {
@@ -123,11 +147,13 @@ impl Game {
             score: 0,
             screen: 0,
             sound: SoundFx::new(),
+            paused: false,
+            animations: Animations::new(),
         }
     }
 
     fn new_game(&mut self) {
-        self.game_state = State::ScreenStart(1.0);
+        self.game_state = State::InProgress;
         self.mother.reset();
         self.spiders.reset();
         self.ship.reset();
@@ -143,6 +169,7 @@ impl Game {
         self.game_input.reset();
         self.sound.turn_on();
         self.ship.proceed_with_changeover();
+        self.screen_start();
     }
 
     fn render_score(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs) {
@@ -155,14 +182,20 @@ impl Game {
             ).unwrap();
     }
 
-    fn render_attack_text(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs, fade: f32) {
-        text::Text::new_color([0.31, 0.47, 0.71, fade], 40).draw(
-            &format!("Get ready for attack {}", self.screen),
-            glyphs,
-            &c.draw_state,
-            c.transform.trans(120.0, 350.0),
-            g
-            ).unwrap();
+    fn screen_start(&mut self) {
+        let screen_number = self.screen;
+        self.animations.register(Animation::new(
+            Box::new(move |frame, c, g, gl| {
+                text::Text::new_color([0.31, 0.47, 0.71, 1.0 - (frame as f32 / 100.0)], 40).draw(
+                    &format!("Get ready for attack {}", screen_number),
+                    gl,
+                    &c.draw_state,
+                    c.transform.trans(120.0, 350.0),
+                    g
+                    ).unwrap();
+            }),
+            self.frame_count,
+            100));
     }
 
     fn render_screens_complete(&self, c: Context, g: &mut G2d) {
@@ -234,26 +267,41 @@ impl Game {
     }
 
     pub fn render(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs) {
-        self.render_screens_complete(c, g);
-        self.base_bricks.render(c, g);
-        self.letter_bricks.render(c, g);
-        self.mother.render(c, g, self.frame_count);
-        self.spiders.render(&self.mother, c, g, self.frame_count);
-        self.bonus_bomb.render(c, g, self.frame_count);
-        if self.game_state.playing() {
-            self.ship.render(c, g, self.frame_count);
-            self.missile.render(c, g);
+        if self.paused {
+            if self.animations.in_progress() {
+                // just so we can see the volume control when the game is paused
+                // animations won't actually proceed without advance in frame count
+                self.animations.render(c, g, glyphs, self.frame_count);
+            }
+            text::Text::new_color([0.0, 0.0, 1.0, 1.0], 32).draw(
+                "Paused",
+                glyphs,
+                &c.draw_state,
+                c.transform.trans(common::SCREEN_WIDTH / 2.0 - 55.0, 300.0),
+                g
+                ).unwrap();
         }
-        self.bombs.render(c, g);
-        self.render_score(c, g, glyphs);
-        if let State::GameOver = self.game_state {
-            image(&self.game_over_image, c.transform.trans(87.0, 250.0), g);
-        }
-        if ! self.game_state.playing() {
-            image(&self.instructions_image, c.transform.trans(152.0, 350.0), g);
-        }
-        if let State::ScreenStart(n) = self.game_state {
-            self.render_attack_text(c, g, glyphs, n);
+        else {
+            clear([0.0, 0.0, 0.0, 1.0], g);
+            self.render_screens_complete(c, g);
+            self.base_bricks.render(c, g);
+            self.letter_bricks.render(c, g);
+            self.mother.render(c, g, self.frame_count);
+            self.spiders.render(&self.mother, c, g, self.frame_count);
+            self.bonus_bomb.render(c, g, self.frame_count);
+            if self.game_state.playing() {
+                self.ship.render(c, g, self.frame_count);
+                self.missile.render(c, g);
+            }
+            self.bombs.render(c, g);
+            self.render_score(c, g, glyphs);
+            if let State::GameOver = self.game_state {
+                image(&self.game_over_image, c.transform.trans(87.0, 250.0), g);
+            }
+            if ! self.game_state.playing() {
+                image(&self.instructions_image, c.transform.trans(152.0, 350.0), g);
+            }
+            self.animations.render(c, g, glyphs, self.frame_count);
         }
     }
 
@@ -262,74 +310,84 @@ impl Game {
     }
 
     pub fn update(&mut self) {
-        self.frame_count += 1;
+        if self.game_input.pause_pressed {
+            self.game_input.acknowledge_pause();
+            if self.game_state.playing() {
+                self.paused = ! self.paused;
+            }
+        }
 
-        if self.game_state.playing() {
-            self.bonus_bomb_collision();
-            self.missile_collision();
-            self.bomb_collision();
-            self.spider_collision();
-            if self.ship.waiting_for_changeover() && self.spiders.clear() &&
+        if self.game_input.dec_vol_pressed {
+            self.game_input.acknowledge_volume_change();
+            self.sound.decrease_volume(&mut self.animations, self.frame_count);
+        }
+        if self.game_input.inc_vol_pressed {
+            self.game_input.acknowledge_volume_change();
+            self.sound.increase_volume(&mut self.animations, self.frame_count);
+        }
+
+        if ! self.paused {
+            self.frame_count += 1;
+
+            if self.game_state.playing() {
+                self.bonus_bomb_collision();
+                self.missile_collision();
+                self.bomb_collision();
+                self.spider_collision();
+                if self.ship.waiting_for_changeover() && self.spiders.clear() &&
+                    ! self.bombs.in_flight() {
+                    self.ship.proceed_with_changeover();
+                }
+                if self.letter_bricks.complete() || ! self.ship.life_left() {
+                    self.game_state = State::GameOver;
+                    self.sound.turn_off();
+                }
+
+                self.missile.update();
+                self.ship.update();
+                if self.game_input.left_pressed {
+                    self.ship.move_left();
+                }
+                else if self.game_input.right_pressed {
+                    self.ship.move_right();
+                }
+                if self.game_input.fire_pressed {
+                    self.ship.launch_missile(&mut self.missile, &self.sound);
+                    self.game_input.acknowledge_fire();
+                }
+            }
+
+            if self.game_state.screen_in_progress() || ! self.game_state.playing() {
+                self.base_bricks.update();
+                self.letter_bricks.update(&self.sound, self.frame_count);
+                self.bonus_bomb.update(&self.sound);
+                self.mother.update(&mut self.bonus_bomb, self.frame_count);
+                self.bombs.update();
+                self.spiders.update(
+                    &self.mother,
+                    &mut self.base_bricks,
+                    &mut self.letter_bricks,
+                    &mut self.bombs,
+                    self.ship.in_changeover() && self.game_state.playing(),
+                    self.frame_count,
+                    &self.sound);
+            }
+
+            if self.game_state.screen_in_progress() &&
+                ! self.spiders.spiders_remain() &&
                 ! self.bombs.in_flight() {
-                self.ship.proceed_with_changeover();
-            }
-            if self.letter_bricks.complete() || ! self.ship.life_left() {
-                self.game_state = State::GameOver;
-                self.sound.turn_off();
+                self.screen += 1;
+                self.mother.reset();
+                self.bonus_bomb.reset();
+                self.spiders.reset();
+                self.frame_count = 0;
+                self.screen_start();
             }
 
-            self.missile.update();
-            self.ship.update();
-            if self.game_input.left_pressed {
-                self.ship.move_left();
+            if (! self.game_state.playing()) && self.game_input.start_pressed {
+                self.new_game();
             }
-            else if self.game_input.right_pressed {
-                self.ship.move_right();
-            }
-            if self.game_input.fire_pressed {
-                self.ship.launch_missile(&mut self.missile, &self.sound);
-                self.game_input.acknowledge_fire();
-            }
-        }
-
-        if self.game_state.screen_in_progress() || ! self.game_state.playing() {
-            self.base_bricks.update();
-            self.letter_bricks.update(&self.sound, self.frame_count);
-            self.bonus_bomb.update(&self.sound);
-            self.mother.update(&mut self.bonus_bomb, self.frame_count);
-            self.bombs.update();
-            self.spiders.update(
-                &self.mother,
-                &mut self.base_bricks,
-                &mut self.letter_bricks,
-                &mut self.bombs,
-                self.ship.in_changeover() && self.game_state.playing(),
-                self.frame_count,
-                &self.sound);
-        }
-
-        if self.game_state.screen_in_progress() &&
-            ! self.spiders.spiders_remain() &&
-            ! self.bombs.in_flight() {
-            self.screen += 1;
-            self.game_state = State::ScreenStart(1.0);
-            self.mother.reset();
-            self.bonus_bomb.reset();
-            self.spiders.reset();
-            self.frame_count = 0;
-        }
-
-        if (! self.game_state.playing()) && self.game_input.start_pressed {
-            self.new_game();
-        }
-
-        if let State::ScreenStart(n) = self.game_state {
-            if n > 0.0 {
-                self.game_state = State::ScreenStart(n - 0.01);
-            }
-            else {
-                self.game_state = State::InProgress;
-            }
+            self.animations.unregister_finished(self.frame_count);
         }
     }
 }
