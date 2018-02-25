@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use music;
 use piston_window::*;
 use piston_window::rectangle;
-use animation::Animation;
 use animation::Animations;
 
 use common;
@@ -43,10 +42,10 @@ impl SoundFx {
         }
     }
 
-    fn volume_change(&self, animations: &mut Animations, frame: u32) {
+    fn volume_change(&self, animations: &mut Animations) {
         let vol = self.volume;
-        animations.register(Animation::new(
-            Box::new(move |frame, c, g, gl| {
+        animations.register(
+            Box::new(move |frame, c, g| {
                 let bar_colour = [0.0, 0.0, 1.0, 1.0 - (frame as f32) / 100.0];
                 let blank_bar_colour = [0.0, 0.0, 0.0, 1.0];
                 let vol_steps = VOL_STEPS as f64;
@@ -65,8 +64,7 @@ impl SoundFx {
 
                 }
             }),
-            frame,
-            100));
+            100);
     }
     pub fn bind_sound_files() {
         music::bind_sound_file(Sound::Fire, find_sound_asset("fire.wav"));
@@ -117,16 +115,16 @@ impl SoundFx {
         self.on = false;
     }
 
-    pub fn increase_volume(&mut self, animations: &mut Animations, frame: u32) {
+    pub fn increase_volume(&mut self, animations: &mut Animations) {
         self.volume += VOL_STEP;
         self.volume = self.volume.min(music::MAX_VOLUME);
-        self.volume_change(animations, frame);
+        self.volume_change(animations);
     }
 
-    pub fn decrease_volume(&mut self, animations: &mut Animations, frame: u32) {
+    pub fn decrease_volume(&mut self, animations: &mut Animations) {
         self.volume -= VOL_STEP;
         self.volume = self.volume.max(music::MIN_VOLUME);
-        self.volume_change(animations, frame);
+        self.volume_change(animations);
     }
 }
 

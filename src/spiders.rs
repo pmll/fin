@@ -11,6 +11,7 @@ use base_bricks::BaseBricks;
 use letter_bricks::LetterBricks;
 use bombs::Bombs;
 use soundfx::SoundFx;
+use animation::Animations;
 
 const NUMBER_OF_SPIDERS: usize = 45;
 const MAX_SPIDERS_IN_FLIGHT: u32 = 6;
@@ -43,7 +44,6 @@ enum State {
     Ascend,
     Carry(f64, f64, Option<common::TargetBrick>),
     Release(f64, f64),
-    Dying(usize),
     Dead,
 }
 
@@ -79,7 +79,6 @@ impl Spider {
 
     fn alive(&self) -> bool {
         match self.state {
-            State::Dying(_) => {false},
             State::Dead => {false},
             _ => {true},
         }
@@ -340,14 +339,6 @@ impl Spider {
                     self.state = State::Seek(x_vel, y_vel, None);
                 }
             },
-            State::Dying(n) => {
-                if n < 20 {
-                    self.state = State::Dying(n + 1);
-                }
-                else {
-                    self.state = State::Dead;
-                }
-            }
             _ => {}
         }
     }
@@ -461,10 +452,6 @@ impl Spiders {
         }
         for s in self.spider.iter_mut().filter(|s| match s.state {State::Dead => {false}, _ => {true}}) {
             s.update(base_bricks, letter_bricks, bombs, restrict, sound);
-            if let State::Dead = s.state {
-                self.spiders_in_flight -= 1;
-                self.spiders_left -= 1;
-            }
         }
     }
 
@@ -510,8 +497,22 @@ impl Spiders {
         self.spider[spider_id].spider_type as usize
     }
 
-    pub fn kill(&mut self, spider_id: usize, sound: &SoundFx) {
-        self.spider[spider_id].state = State::Dying(0);
+    pub fn kill(&mut self, spider_id: usize, sound: &SoundFx, animations: &mut Animations) {
+        self.spider[spider_id].state = State::Dead;
+        self.spiders_in_flight -= 1;
+        self.spiders_left -= 1;
+        let x = self.spider[spider_id].x;
+        let y = self.spider[spider_id].y;
+        // fixme:
+        let explosion = [self.spider_image_explosion[0].clone(),
+                         self.spider_image_explosion[1].clone(),
+                         self.spider_image_explosion[2].clone(),
+                         self.spider_image_explosion[3].clone()];
+        animations.register(
+            Box::new(move |frame, c, g| {
+                image(&explosion[(frame / 5) as usize], c.transform.trans(x, y), g);
+            }),
+            20);
         sound.spider_explode();
     }
 
@@ -573,12 +574,6 @@ impl Spiders {
                           .rot_rad(PI + PI * n * r)
                           .trans(- SPIDER_WIDTH * 0.5, - SPIDER_HEIGHT * 0.5),
                           g);
-                },
-                State::Dying(i) => {
-                    if i < 20 {
-                        image(&self.spider_image_explosion[i / 5],
-                              c.transform.trans(spider.x, spider.y), g);
-                    }
                 },
                 _ => {},
             };

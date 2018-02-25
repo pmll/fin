@@ -29,8 +29,14 @@ impl Mother {
             bonus_bomb_frame: 0}
     }
 
-    pub fn reset(&mut self) {
+    pub fn full_reset(&mut self) {
+        self.reset();
         self.x = (common::SCREEN_WIDTH - MOTHER_WIDTH) * 0.5;
+        self.vel = MOTHER_SPEED;
+
+    }
+
+    pub fn reset(&mut self) {
         self.bonus_bomb_frame = 1200 + rand::thread_rng().gen_range(0, 1200);  // 20 - 40 sec in
     }
 

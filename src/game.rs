@@ -11,10 +11,10 @@ use spiders::Spiders;
 use bombs::Bombs;
 use soundfx::SoundFx;
 use bonus_bomb::BonusBomb;
-use animation::Animation;
 use animation::Animations;
 
 const SPIDER_SCORE: [u32; 3] = [40, 80, 200];
+const EXTRA_LIFE_SCORE: u32 = 6000;
 
 enum State {
     Startup,
@@ -154,7 +154,7 @@ impl Game {
 
     fn new_game(&mut self) {
         self.game_state = State::InProgress;
-        self.mother.reset();
+        self.mother.full_reset();
         self.spiders.reset();
         self.ship.reset();
         self.missile.reset();
@@ -172,6 +172,14 @@ impl Game {
         self.screen_start();
     }
 
+    fn increase_score(&mut self, inc: u32) {
+        let q = self.score / EXTRA_LIFE_SCORE;
+        self.score += inc;
+        if (self.score / EXTRA_LIFE_SCORE) > q {
+            self.ship.award_extra_life(&self.sound, &mut self.animations);
+        }
+    }
+
     fn render_score(&self, c: Context, g: &mut G2d, glyphs: &mut Glyphs) {
         text::Text::new_color([0.0, 0.0, 1.0, 1.0], 32).draw(
             &format!("{:07}", self.score),
@@ -184,7 +192,7 @@ impl Game {
 
     fn screen_start(&mut self) {
         let screen_number = self.screen;
-        self.animations.register(Animation::new(
+        self.animations.register_text(
             Box::new(move |frame, c, g, gl| {
                 text::Text::new_color([0.31, 0.47, 0.71, 1.0 - (frame as f32 / 100.0)], 40).draw(
                     &format!("Get ready for attack {}", screen_number),
@@ -194,8 +202,7 @@ impl Game {
                     g
                     ).unwrap();
             }),
-            self.frame_count,
-            100));
+            100);
     }
 
     fn render_screens_complete(&self, c: Context, g: &mut G2d) {
@@ -223,11 +230,11 @@ impl Game {
                 }
                 self.missile.terminate_flight();
                 let points = SPIDER_SCORE[self.spiders.spider_type(spider_id)];
-                self.score += points;
+                self.increase_score(points);
                 if self.spiders.carrying(spider_id) {
-                    self.score += points;
+                    self.increase_score(points);
                 }
-                self.spiders.kill(spider_id, &self.sound);
+                self.spiders.kill(spider_id, &self.sound, &mut self.animations);
             }
         }
     }
@@ -235,7 +242,7 @@ impl Game {
     fn bomb_collision(&mut self) {
         if self.ship.alive() {
             if self.bombs.collision(self.ship.area()) {
-                self.ship.kill(&self.sound);
+                self.ship.kill(&self.sound, &mut self.animations);
             }
         }
     }
@@ -252,8 +259,8 @@ impl Game {
                         self.base_bricks.untarget(brick_id);
                     }
                 }
-                self.spiders.kill(spider_id, &self.sound);
-                self.ship.kill(&self.sound);
+                self.spiders.kill(spider_id, &self.sound, &mut self.animations);
+                self.ship.kill(&self.sound, &mut self.animations);
             }
         }
     }
@@ -261,7 +268,7 @@ impl Game {
     fn bonus_bomb_collision(&mut self) {
         if self.missile.flying() && self.bonus_bomb.collision(self.missile.area()) {
             self.missile.terminate_flight();
-            self.bonus_bomb.achieve_bonus(&mut self.letter_bricks);
+            self.bonus_bomb.achieve_bonus(&mut self.letter_bricks, &mut self.animations);
             self.sound.bonus_bomb_hit();
         }
     }
@@ -270,8 +277,8 @@ impl Game {
         if self.paused {
             if self.animations.in_progress() {
                 // just so we can see the volume control when the game is paused
-                // animations won't actually proceed without advance in frame count
-                self.animations.render(c, g, glyphs, self.frame_count);
+                // animations won't actually proceed without animations.update()
+                self.animations.render(c, g, glyphs);
             }
             text::Text::new_color([0.0, 0.0, 1.0, 1.0], 32).draw(
                 "Paused",
@@ -301,7 +308,7 @@ impl Game {
             if ! self.game_state.playing() {
                 image(&self.instructions_image, c.transform.trans(152.0, 350.0), g);
             }
-            self.animations.render(c, g, glyphs, self.frame_count);
+            self.animations.render(c, g, glyphs);
         }
     }
 
@@ -319,11 +326,11 @@ impl Game {
 
         if self.game_input.dec_vol_pressed {
             self.game_input.acknowledge_volume_change();
-            self.sound.decrease_volume(&mut self.animations, self.frame_count);
+            self.sound.decrease_volume(&mut self.animations);
         }
         if self.game_input.inc_vol_pressed {
             self.game_input.acknowledge_volume_change();
-            self.sound.increase_volume(&mut self.animations, self.frame_count);
+            self.sound.increase_volume(&mut self.animations);
         }
 
         if ! self.paused {
@@ -335,7 +342,7 @@ impl Game {
                 self.bomb_collision();
                 self.spider_collision();
                 if self.ship.waiting_for_changeover() && self.spiders.clear() &&
-                    ! self.bombs.in_flight() {
+                    ! self.bombs.in_flight() && ! self.missile.flying() {
                     self.ship.proceed_with_changeover();
                 }
                 if self.letter_bricks.complete() || ! self.ship.life_left() {
@@ -387,7 +394,7 @@ impl Game {
             if (! self.game_state.playing()) && self.game_input.start_pressed {
                 self.new_game();
             }
-            self.animations.unregister_finished(self.frame_count);
+            self.animations.update();
         }
     }
 }

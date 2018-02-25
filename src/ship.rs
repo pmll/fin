@@ -4,6 +4,7 @@ use piston_window::*;
 use missile;
 use common;
 use soundfx;
+use animation::Animations;
 
 const SHIP_WIDTH: f64 = 30.0;
 const SHIP_HEIGHT: f64 = 40.0;
@@ -15,7 +16,6 @@ const LIVES_X: f64 = common::SCREEN_WIDTH - 2.0 - SHIP_WIDTH / 2.0;
 
 enum ShipState {
     Alive,
-    Dead(usize),
     WaitForChangeOver,
     ChangeOver(f64),
 }
@@ -68,11 +68,39 @@ impl Ship {
         }
     }
 
-    pub fn kill(&mut self, sound: &soundfx::SoundFx) {
+    pub fn kill(&mut self, sound: &soundfx::SoundFx, animations: &mut Animations) {
         if let ShipState::Alive = self.state {
-            self.state = ShipState::Dead(0);
+            let x = self.x;
+            // fixme:
+            let explosion = [self.explosion_image[0].clone(),
+                             self.explosion_image[1].clone(),
+                             self.explosion_image[2].clone(),
+                             self.explosion_image[3].clone()];
+            animations.register(
+                Box::new(move |frame, c, g| {
+                    image(&explosion[(frame / 8) as usize], c.transform.trans(x, SHIP_Y), g);
+                }),
+                32);
             sound.ship_explode();
+            self.state = ShipState::WaitForChangeOver;
+            self.x = Ship::home_x();
         }
+    }
+
+    pub fn award_extra_life(&mut self, sound: &soundfx::SoundFx, animations: &mut Animations) {
+        self.lives += 1;
+        animations.register_text(
+            Box::new(move |frame, c, g, gl| {
+                text::Text::new_color([1.0, 0.0, 0.0, 1.0 - (frame as f32 / 50.0)], 40).draw(
+                    &format!("Extra Life!"),
+                    gl,
+                    &c.draw_state,
+                    c.transform.trans(210.0, 450.0),
+                    g
+                    ).unwrap();
+            }),
+            50);
+        // todo: extra life sound
     }
 
     pub fn alive(&self) -> bool {
@@ -94,15 +122,6 @@ impl Ship {
 
     pub fn update(&mut self) {
         match self.state {
-            ShipState::Dead(n) => {
-                if n < 31 {
-                    self.state = ShipState::Dead(n + 1);
-                }
-                else {
-                    self.state = ShipState::WaitForChangeOver;
-                    self.x = Ship::home_x();
-                }
-            },
             ShipState::ChangeOver(n) => {
                 if n < 1.0 {
                     self.state = ShipState::ChangeOver(n + 0.05);
@@ -153,12 +172,6 @@ impl Ship {
                 let ship_pulse = frame_count % 30;
                 image(&self.ship_image[(ship_pulse / 10) as usize],
                     c.transform.trans(self.x, SHIP_Y), g);
-            },
-            ShipState::Dead(n) => {
-                if n < 32 {
-                    image(&self.explosion_image[n / 8],
-                        c.transform.trans(self.x, SHIP_Y), g);
-                }
             },
             ShipState::ChangeOver(n) => {
                 image(&self.ship_image[0],

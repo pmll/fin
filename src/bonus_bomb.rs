@@ -6,6 +6,7 @@ use piston_window::*;
 use letter_bricks::LetterBricks;
 use common;
 use soundfx::SoundFx;
+use animation::Animations;
 
 const START_Y: f64 = 120.0;
 const BOMB_WIDTH: f64 = 50.0;
@@ -24,7 +25,6 @@ enum BombType {
 enum State {
     Dormant,
     InFlight,
-    Hit(f64),
 }
 
 pub struct BonusBomb {
@@ -83,11 +83,24 @@ impl BonusBomb {
         self.in_flight() && col_area.collides(self.area())
     }
 
-    pub fn achieve_bonus(&mut self, letter_bricks: &mut LetterBricks) {
-        self.bomb_state = State::Hit(1.0);
-        self.x += BOMB_WIDTH / 2.0;
-        self.y += BOMB_HEIGHT / 2.0;
+    pub fn achieve_bonus(&mut self, letter_bricks: &mut LetterBricks, animations: &mut Animations) {
+        self.bomb_state = State::Dormant;
         letter_bricks.initiate_removal(BOMB_VALUE[self.bomb_type as usize]);
+
+        let x = self.x + BOMB_WIDTH / 2.0;
+        let y = self.y + BOMB_HEIGHT / 2.0;
+        let bomb_image = self.bomb_image[self.bomb_type as usize][0].clone();
+        animations.register(
+            Box::new(move |frame, c, g| {
+                let n = (100 - frame) as f64 / 100.0;
+                image(&bomb_image,
+                      c.transform.trans(x, y)
+                      .rot_rad(n * PI * 10.0)
+                      .trans(- BOMB_WIDTH * 0.5 * n, - BOMB_HEIGHT * 0.5 * n)
+                      .zoom(n),
+                      g);
+            }),
+            100);
     }
 
     pub fn update(&mut self, sound: &SoundFx) {
@@ -98,14 +111,6 @@ impl BonusBomb {
                 }
                 self.y += BOMB_SPEED;
                 if self.y > common::SCREEN_HEIGHT {
-                    self.bomb_state = State::Dormant;
-                }
-            },
-            State::Hit(n) => {
-                if n > 0.0 {
-                    self.bomb_state = State::Hit(n - 0.01);
-                }
-                else {
                     self.bomb_state = State::Dormant;
                 }
             },
@@ -120,14 +125,6 @@ impl BonusBomb {
         match self.bomb_state {
             State::InFlight => {
                 image(&self.bomb_image[bt][an], c.transform.trans(self.x, self.y), g);
-            },
-            State::Hit(n) => {
-                image(&self.bomb_image[bt][an],
-                      c.transform.trans(self.x, self.y)
-                      .rot_rad(n * PI * 10.0)
-                      .trans(- BOMB_WIDTH * 0.5 * n, - BOMB_HEIGHT * 0.5 * n)
-                      .zoom(n),
-                      g);
             },
             _ => {},
         }
