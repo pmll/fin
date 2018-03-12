@@ -12,6 +12,7 @@ use bombs::Bombs;
 use soundfx::SoundFx;
 use bonus_bomb::BonusBomb;
 use animation::Animations;
+use background::Background;
 
 const SPIDER_SCORE: [u32; 3] = [40, 80, 200];
 const EXTRA_LIFE_SCORE: u32 = 6000;
@@ -125,6 +126,7 @@ pub struct Game {
     sound: SoundFx,
     paused: bool,
     animations: Animations,
+    background: Background,
 }
 
 impl Game {
@@ -149,6 +151,7 @@ impl Game {
             sound: SoundFx::new(),
             paused: false,
             animations: Animations::new(),
+            background: Background::new(window),
         }
     }
 
@@ -290,6 +293,7 @@ impl Game {
         }
         else {
             clear([0.0, 0.0, 0.0, 1.0], g);
+            self.background.render(c, g);
             self.render_screens_complete(c, g);
             self.base_bricks.render(c, g);
             self.letter_bricks.render(c, g);
@@ -395,6 +399,7 @@ impl Game {
                 self.new_game();
             }
             self.animations.update();
+            self.background.update();
         }
     }
 }

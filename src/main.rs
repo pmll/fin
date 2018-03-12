@@ -16,6 +16,7 @@ mod soundfx;
 mod game;
 mod bonus_bomb;
 mod animation;
+mod background;
 
 use piston_window::*;
 
