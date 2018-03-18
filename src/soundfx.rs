@@ -21,6 +21,8 @@ pub enum Sound {
     TakeBrick,
     DepositBrick,
     BonusBomb,
+    RemoveBrick,
+    ExtraLife,
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
@@ -73,6 +75,8 @@ impl SoundFx {
         music::bind_sound_file(Sound::SpiderExplode, find_sound_asset("spider_explosion.wav"));
         music::bind_sound_file(Sound::ShipExplode, find_sound_asset("ship_explosion.wav"));
         music::bind_sound_file(Sound::BonusBomb, find_sound_asset("bonus_bomb.wav"));
+        music::bind_sound_file(Sound::RemoveBrick, find_sound_asset("remove.ogg"));
+        music::bind_sound_file(Sound::ExtraLife, find_sound_asset("extra_life.ogg"));
     }
 
     pub fn fire(&self) {
@@ -88,7 +92,7 @@ impl SoundFx {
     }
 
     pub fn remove_brick(&self) {
-        self.play_sound(Sound::TakeBrick); // for now
+        self.play_sound(Sound::RemoveBrick);
     }
 
     pub fn spider_explode(&self) {
@@ -105,6 +109,10 @@ impl SoundFx {
 
     pub fn bonus_bomb(&self) {
         self.play_sound(Sound::BonusBomb);
+    }
+
+    pub fn extra_life(&self) {
+        self.play_sound(Sound::ExtraLife);
     }
 
     pub fn turn_on(&mut self) {

@@ -100,7 +100,7 @@ impl Ship {
                     ).unwrap();
             }),
             50);
-        // todo: extra life sound
+        sound.extra_life();
     }
 
     pub fn alive(&self) -> bool {

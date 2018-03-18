@@ -13,7 +13,8 @@ lost or the word is completed.
 To build the game, a [Rust](https://www.rust-lang.org) development environment
 is required. The Cargo tool will take care of downloading and compiling the
 required Rust libraries. Also required to build the game are the SDL2 and
-SDL2_mixer libraries. Thus far, it has only been tested on Debian Stretch.
+SDL2_mixer libraries - ensure the development packages are also installed. Thus
+far, it has only been tested on Debian Stretch.
 
 The game is written in the Rust programming language and is built on top of the
 [Piston](https://github.com/PistonDevelopers/piston) game engine.
