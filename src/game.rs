@@ -310,7 +310,7 @@ impl Game {
                 image(&self.game_over_image, c.transform.trans(87.0, 250.0), g);
             }
             if ! self.game_state.playing() {
-                image(&self.instructions_image, c.transform.trans(152.0, 350.0), g);
+                image(&self.instructions_image, c.transform.trans(125.0, 320.0), g);
             }
             self.animations.render(c, g, glyphs);
         }
