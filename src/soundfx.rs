@@ -35,7 +35,7 @@ pub struct SoundFx {
 
 impl SoundFx {
     pub fn new() -> SoundFx {
-        SoundFx {on: false, volume: music::MAX_VOLUME}
+        SoundFx {on: false, volume: (music::MAX_VOLUME + music::MIN_VOLUME) / 2.0}
     }
 
     fn play_sound(&self, sound: Sound) {

@@ -14,6 +14,7 @@ const BOMB_HEIGHT: f64 = 22.0;
 const BOMB_SPEED: f64 = 2.0;
 const BOMB_PERIOD: u32 = 10;
 const BOMB_VALUE: [usize; 3] = [10, 30, 50];
+const SCORE_MULTIPLIER: u32 = 20;
 
 #[derive(Copy, Clone)]
 enum BombType {
@@ -71,12 +72,12 @@ impl BonusBomb {
         self.x = x - BOMB_WIDTH / 2.0;
         self.y = START_Y;
         self.bomb_state = State::InFlight;
-        // we weight in favour of the lower value bombs
-        let r = rand::thread_rng().gen_range(0, 8);
         self.bomb_type =
-            if r < 4 {BombType::Bonus10}
-            else if r < 6 {BombType::Bonus30}
-            else {BombType::Bonus50};
+            match rand::thread_rng().gen_range(0, 3) {
+                0 => {BombType::Bonus10},
+                1 => {BombType::Bonus30},
+                _ => {BombType::Bonus50},
+            };
     }
 
     pub fn collision(&mut self, col_area: common::ScreenObjectArea) -> bool {
@@ -101,6 +102,10 @@ impl BonusBomb {
                       g);
             }),
             100);
+    }
+
+    pub fn score(&self) -> u32 {
+        BOMB_VALUE[self.bomb_type as usize] as u32 * SCORE_MULTIPLIER
     }
 
     pub fn update(&mut self, sound: &SoundFx) {

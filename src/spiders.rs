@@ -14,7 +14,8 @@ use soundfx::SoundFx;
 use animation::Animations;
 
 const NUMBER_OF_SPIDERS: usize = 45;
-const MAX_SPIDERS_IN_FLIGHT: u32 = 6;
+const INIT_IN_FLIGHT: u32 = 6;
+const MAX_IN_FLIGHT: u32 = 16;
 const SPIDER_WIDTH: f64 = 30.0;
 const SPIDER_HEIGHT: f64 = 40.0;
 const SPIDER_PERIOD: u32 = 20;
@@ -365,6 +366,7 @@ pub struct Spiders {
     spiders_in_flight: u32,
     next_spider_launch: usize,
     last_launch_frame: u32,
+    max_spiders_in_flight: u32,
     spider: [Spider; NUMBER_OF_SPIDERS],
 }
 
@@ -406,6 +408,7 @@ impl Spiders {
             spiders_in_flight: 0,
             next_spider_launch: 0,
             last_launch_frame: 0,
+            max_spiders_in_flight: 10, // value will only last for first demo
             spider: [Spider::new(); NUMBER_OF_SPIDERS]};
         for i in 0..NUMBER_OF_SPIDERS {
             if i < 11 {
@@ -423,7 +426,7 @@ impl Spiders {
         new_spiders
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, screen: u32) {
         for i in 0..NUMBER_OF_SPIDERS {
             self.spider[i].y = ((i / 15) * 8) as f64 - 16.0;
             self.spider[i].x = ((i % 15) * 6 + 5) as f64;
@@ -434,13 +437,15 @@ impl Spiders {
             self.spiders_in_flight = 0;
             self.next_spider_launch = 0;
             self.last_launch_frame = 0;
+            self.max_spiders_in_flight =
+                (INIT_IN_FLIGHT + ((screen - 1) / 2)).min(MAX_IN_FLIGHT);
         }
     }
 
     pub fn update(&mut self, mother: &Mother, base_bricks: &mut BaseBricks,
                   letter_bricks: &mut LetterBricks, bombs: &mut Bombs, 
                   restrict: bool, frame_count: u32, sound: &SoundFx) {
-        if self.spiders_in_flight < MAX_SPIDERS_IN_FLIGHT &&
+        if self.spiders_in_flight < self.max_spiders_in_flight &&
            self.next_spider_launch < NUMBER_OF_SPIDERS &&
            frame_count > FIRST_LAUNCH &&
            frame_count - self.last_launch_frame >= FRAMES_BETWEEN_LAUNCHES &&

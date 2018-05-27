@@ -158,7 +158,8 @@ impl Game {
     fn new_game(&mut self) {
         self.game_state = State::InProgress;
         self.mother.full_reset();
-        self.spiders.reset();
+        self.screen = 1;
+        self.spiders.reset(self.screen);
         self.ship.reset();
         self.missile.reset();
         self.base_bricks.reset();
@@ -168,7 +169,6 @@ impl Game {
         self.bonus_bomb.reset();
         self.score = 0;
         self.frame_count = 0;
-        self.screen = 1;
         self.game_input.reset();
         self.sound.turn_on();
         self.ship.proceed_with_changeover();
@@ -271,6 +271,8 @@ impl Game {
     fn bonus_bomb_collision(&mut self) {
         if self.missile.flying() && self.bonus_bomb.collision(self.missile.area()) {
             self.missile.terminate_flight();
+            let points = self.bonus_bomb.score();
+            self.increase_score(points);
             self.bonus_bomb.achieve_bonus(&mut self.letter_bricks, &mut self.animations);
             self.sound.bonus_bomb_hit();
         }
@@ -390,7 +392,7 @@ impl Game {
                 self.screen += 1;
                 self.mother.reset();
                 self.bonus_bomb.reset();
-                self.spiders.reset();
+                self.spiders.reset(self.screen);
                 self.frame_count = 0;
                 self.screen_start();
             }
