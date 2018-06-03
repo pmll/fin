@@ -34,7 +34,7 @@ fn main() {
     .build()
     .unwrap();
 
-    window.set_ups(60);
+    window.set_ups(common::UPDATE_FPS);
 
     let ref font = common::find_asset("font/FiraSans-Regular.ttf");
     let factory = window.factory.clone();

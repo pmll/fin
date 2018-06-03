@@ -348,7 +348,8 @@ impl Game {
                 self.bomb_collision();
                 self.spider_collision();
                 if self.ship.waiting_for_changeover() && self.spiders.clear() &&
-                    ! self.bombs.in_flight() && ! self.missile.flying() {
+                    ! self.bombs.in_flight() && ! self.missile.flying() &&
+                    self.ship.enough_delay_for_changeover() {
                     self.ship.proceed_with_changeover();
                 }
                 if self.letter_bricks.complete() || ! self.ship.life_left() {
@@ -381,7 +382,8 @@ impl Game {
                     &mut self.base_bricks,
                     &mut self.letter_bricks,
                     &mut self.bombs,
-                    self.ship.in_changeover() && self.game_state.playing(),
+                    (self.ship.in_changeover() && self.game_state.playing()) ||
+                        self.ship.protected(),
                     self.frame_count,
                     &self.sound);
             }

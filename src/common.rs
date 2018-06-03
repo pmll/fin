@@ -4,6 +4,7 @@ use find_folder;
 
 pub const SCREEN_WIDTH: f64 = 600.0;
 pub const SCREEN_HEIGHT: f64 = 700.0;
+pub const UPDATE_FPS: u64 = 60;
 
 #[derive(Copy, Clone)]
 pub struct TargetBrick {
